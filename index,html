@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CS:GO Server Player Count</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js"></script>
+</head>
+<body>
+    <h1>CS:GO Server Player Count</h1>
+    <button onclick="getPlayerCount()">Get Player Count</button>
+    <div id="playerCount"></div>
+</body>
+</html>
