@@ -1,19 +1,37 @@
 body {
     font-family: Arial, sans-serif;
+    background-color: #f2f2f2;
+    margin: 0;
+    padding: 20px;
+  }
+  
+  h1 {
     text-align: center;
-}
-
-h1 {
-    color: #333;
-}
-
-button {
-    padding: 10px 20px;
-    font-size: 16px;
-}
-
-#playerCount {
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
     margin-top: 20px;
-    font-size: 24px;
+  }
+  
+  th,
+  td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  thead {
+    background-color: #f5f5f5;
+  }
+  
+  tbody tr:hover {
+    background-color: #f9f9f9;
+  }
+  
+  tbody td:first-child {
     font-weight: bold;
-}
+  }
+  
+  

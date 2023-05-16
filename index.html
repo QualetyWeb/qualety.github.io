@@ -1,13 +1,23 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>CS:GO Server Player Count</title>
+  <head>
+    <meta charset="utf-8">
+    <title>Server Status</title>
     <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <h1>Server Status</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Server Name</th>
+          <th>IP Address</th>
+          <th>Players Online</th>
+        </tr>
+      </thead>
+      <tbody id="serverList">
+      </tbody>
+    </table>
     <script src="script.js"></script>
-</head>
-<body>
-    <h1>CS:GO Server Player Count</h1>
-    <button onclick="getPlayerCount()">Get Player Count</button>
-    <div id="playerCount"></div>
-</body>
+  </body>
 </html>

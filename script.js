@@ -1,45 +1,60 @@
-// Replace "YOUR_BATTLEMETRICS_API_KEY" with your actual BattleMetrics API key
+// Replace with your BattleMetrics API key
 const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbiI6IjU4ZGRhMTNmOTkxZGY2YmIiLCJpYXQiOjE2ODQyNjU5NTQsIm5iZiI6MTY4NDI2NTk1NCwiaXNzIjoiaHR0cHM6Ly93d3cuYmF0dGxlbWV0cmljcy5jb20iLCJzdWIiOiJ1cm46dXNlcjo3MDgzOTgifQ.wslNER_JIVtPJawPL0fKl-B8BJkz0ZicyjmQpTj7DM8";
 
-// Replace "YOUR_SERVER_ID_1", "YOUR_SERVER_ID_2", etc. with the actual server IDs you want to query
-const serverIds = ["192.223.26.36:27015", "74.91.124.80:27015"];
+// Array of servers to query
+const servers = [
+  {
+    name: "Server 1",
+    address: "74.91.124.80:27015"
+  },
+  {
+    name: "Server 2",
+    address: "74.91.124.80:27015"
+  },
+  {
+    name: "Server 3",
+    address: "192.223.26.36:27015"
+  }
+];
 
-// Function to fetch server information
-async function fetchServerInfo(serverId) {
-  const url = `https://api.battlemetrics.com/servers/${serverId}`;
+// Function to fetch server data and update the webpage
+async function fetchServerData() {
+  const serverList = document.getElementById("serverList");
 
-  try {
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-    });
+  for (const server of servers) {
+    try {
+      const response = await fetch(`https://api.battlemetrics.com/servers?filter[game]=csgo&filter[address]=${server.address}`, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`
+        }
+      });
 
-    const data = await response.json();
-    const playerCount = data.data.attributes.players;
-    return playerCount;
-  } catch (error) {
-    console.error(`Failed to fetch server information for server ID ${serverId}`, error);
-    return "N/A";
+      if (response.ok) {
+        const data = await response.json();
+        const playerCount = data.data[0].attributes.players;
+
+        const row = document.createElement("tr");
+        const nameCell = document.createElement("td");
+        const addressCell = document.createElement("td");
+        const playerCountCell = document.createElement("td");
+
+        nameCell.textContent = server.name;
+        addressCell.textContent = server.address;
+        playerCountCell.textContent = playerCount;
+
+        row.appendChild(nameCell);
+        row.appendChild(addressCell);
+        row.appendChild(playerCountCell);
+
+        serverList.appendChild(row);
+      } else {
+        console.log(`Failed to fetch data for ${server.name}`);
+      }
+    } catch (error) {
+      console.log(`Error fetching data for ${server.name}: ${error}`);
+    }
   }
 }
 
-// Function to update the player count in the HTML
-function updatePlayerCount(serverId, playerCount) {
-  const playerCountElement = document.getElementById(`player-count-${serverId}`);
-  playerCountElement.textContent = playerCount;
-}
-
-// Function to fetch and update player counts for all servers
-async function updatePlayerCounts() {
-  for (const serverId of serverIds) {
-    const playerCount = await fetchServerInfo(serverId);
-    updatePlayerCount(serverId, playerCount);
-  }
-}
-
-// Call the function to initially update the player counts
-updatePlayerCounts();
-
-// Set an interval to update the player counts every 30 seconds (adjust as needed)
-setInterval(updatePlayerCounts, 30000);
+// Call the fetchServerData function when the page loads
+window.addEventListener("DOMContentLoaded", fetchServerData);
