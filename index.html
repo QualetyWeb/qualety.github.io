@@ -1,23 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
+  <head>
+    <title>Names List</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Names List</h1>
+    <ul id="names-list">
+      <!-- Names will be dynamically added here using JavaScript -->
+    </ul>
 
-<head>
-  <meta charset="UTF-8">
-  <title>Name List</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-
-<body>
-  <div class="container">
-    <h1>Name List</h1>
-    <div class="form">
-      <input type="text" id="nameInput" placeholder="Enter a name">
-      <button onclick="addName()">Add</button>
-    </div>
-    <ul id="nameList"></ul>
-  </div>
-
-  <script src="script.js"></script>
-</body>
-
+    <script src="script.js"></script>
+  </body>
 </html>
