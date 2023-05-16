@@ -1,23 +1,23 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Server Status</title>
-    <link rel="stylesheet" href="styles.css">
-  </head>
-  <body>
-    <h1>Server Status</h1>
-    <table>
-      <thead>
-        <tr>
-          <th>Server Name</th>
-          <th>IP Address</th>
-          <th>Players Online</th>
-        </tr>
-      </thead>
-      <tbody id="serverList">
-      </tbody>
-    </table>
-    <script src="script.js"></script>
-  </body>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Name List</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="container">
+    <h1>Name List</h1>
+    <div class="form">
+      <input type="text" id="nameInput" placeholder="Enter a name">
+      <button onclick="addName()">Add</button>
+    </div>
+    <ul id="nameList"></ul>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
 </html>
