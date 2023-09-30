@@ -1,2 +1,1238 @@
-Fellan
-Jeppe
+
+local ffi = require 'ffi';
+
+local bit = require 'bit';
+
+local vector = require 'vector';
+local anti_aim = require 'gamesense/antiaim_funcs' or error("Missing antiaim funcs library");
+local animations = (function ()local a={data={}}function a:clamp(b,c,d)return math.min(d,math.max(c,b))end;function a:animate(e,f,g)if not self.data[e]then self.data[e]=0 end;g=g or 4;local b=globals.frametime()*g*(f and-1 or 1)self.data[e]=self:clamp(self.data[e]+b,0,1)return self.data[e]end;return a end)()
+
+
+local c_entity = require("gamesense/entity")
+local curr_build = "Source"
+
+-- PREDICT DEBUGGING
+require( "vector3" );
+local get_prop         		= entity.get_prop
+local ui_get           		= ui.get
+local get_local_player 		= entity.get_local_player
+local get_all_players  		= entity.get_players
+local get_player_weapon  	= entity.get_player_weapon
+local entity_is_enemy  		= entity.is_enemy
+local entity_is_alive  		= entity.is_alive
+local entity_is_dormant 	= entity.is_dormant
+local math_atan2 	   		= math.atan2
+local math_deg 	   	   		= math.deg
+local math_sqrt		   		= math.sqrt
+
+
+local v_left, v_right = Vector3(0, 0, 0), Vector3(0, 0, 0)
+local l_dmg, r_dmg, c_dmg = 0, 0, 0
+
+local o_scan_fineness = 20
+local o_scan_length = 130
+--DEBUG END;
+ffi.cdef[[
+    typedef struct {
+        char  pad_0000[20];
+        int m_nOrder; //0x0014
+        int m_nSequence; //0x0018
+        float m_flPrevCycle; //0x001C
+        float m_flWeight; //0x0020
+        float m_flWeightDeltaRate; //0x0024
+        float m_flPlaybackRate; //0x0028
+        float m_flCycle; //0x002C
+        void *m_pOwner; //0x0030
+        char  pad_0038[4]; //0x0034
+    } CAnimationLayer;
+
+    typedef void*(__thiscall* get_client_entity_t)(void*, int);
+]]
+
+ffi.cdef[[
+    void* __stdcall URLDownloadToFileA(void* LPUNKNOWN, const char* LPCSTR, const char* LPCSTR2, int a, int LPBINDSTATUSCALLBACK);
+    bool DeleteUrlCacheEntryA(const char* lpszUrlName);
+
+]]
+
+
+local js = panorama.open()
+local _ENV = getfenv(); do
+    local libs = {
+        { "csgo_weapons",   "18807" },
+        { "http",           "19253" },
+        { "trace",          "32949" },
+    }
+    for _, lib in ipairs(libs) do
+        local success, loaded_lib = pcall(require, (lib[2] and "gamesense/" or "lib/") .. lib[1])
+        if success then
+            _ENV[lib[1]] = loaded_lib
+        else
+            if lib[2] then
+                js.SteamOverlayAPI.OpenExternalBrowserURL("https://gamesense.pub/forums/viewtopic.php?id=" .. lib[2])
+            else
+                error("Failed to load module: lib/" .. lib[1] .. " | Local library not found in lib folder", 2)
+            end
+        end
+    end
+end
+local antiaim = {}
+local menu = {
+    ragebot_toggle = ui.reference("RAGE", "Aimbot", "Enabled");
+    enabled = ui.reference("AA", "Anti-aimbot angles", "Enabled");                                  -- [1]  Enable AA                           [29]
+    pitch = {ui.reference("AA", "Anti-aimbot angles", "Pitch")};                                    -- [2]  Pitch                               [30]
+    yaw_base = ui.reference("AA", "Anti-aimbot angles", "Yaw base");                                -- [3]  Yaw Base                            [31]
+    yaw = { ui.reference("AA", "Anti-aimbot angles", "Yaw") },                                      -- [4]  Yaw --> drop[1], slider[2]          [32]
+    yaw_jitter = { ui.reference("AA", "Anti-aimbot angles", "Yaw jitter") };                        -- [5]  Yaw Jitter                          [33]
+    body_yaw = { ui.reference("AA", "Anti-aimbot angles", "Body yaw") };                            -- [6]  Body Yaw                            [34]
+    freestanding_body_yaw = ui.reference("AA", "Anti-aimbot angles", "Freestanding body yaw");      -- [7]  Freestanding Body Yaw               [35]
+    edge_yaw = ui.reference("AA", "Anti-aimbot angles", "Edge yaw");                                -- [8]  Edge Yaw                            [36] 
+    freestand = { ui.reference("AA", "Anti-aimbot angles", "Freestanding") },                       -- [9]  Freestanding --> Ref[1], Key[2]     [37]
+	roll = ui.reference("AA", "Anti-aimbot angles", "Roll");                                        -- [10] Roll                                [38]
+    legmovement = ui.reference("AA", "Other", "Leg movement");                                      -- [11] Leg Movement                        [39]
+    fakepeek = { ui.reference("AA", "Other", "Fake peek") },                                        -- [12] Fake Peek                           [40]
+    slowmotion = { ui.reference("AA", "Other", "Slow motion") },                                    -- [13] Slow Motion                         [41]
+    onshot = { ui.reference("AA", "Other", "On shot anti-aim") },                                   -- [14] OSAA / Hideshots                    [42]
+    doubletap = { ui.reference("RAGE", "Aimbot", "Double tap") },                                   -- [15] Double Tap                          [43]
+    fakeduck = ui.reference("RAGE", "Other", "Duck peek assist");                                   -- [16] Fake Duck                           [44]
+    auto_peek = { ui.reference("Rage", "Other", "Quick peek assist") },                             -- [17] Auto Peek                           [45]
+    pingspike = { ui.reference("MISC", "Miscellaneous", "Ping Spike") },                            -- [18] Ping Spike                          [46]
+    fakelag = ui.reference("AA", "Fake lag", "Enabled");                                            -- [19] Fakelag Switch                      [47]
+    fakelag_limit = ui.reference("AA", "Fake lag", "Limit");                                        -- [20] Fakelag Limit                       [48]
+    force_body = ui.reference("RAGE", "Aimbot", "Force body aim");                                  -- [21] Force Baim                          [49]
+    force_safe = ui.reference("RAGE", "Aimbot", "Force safe point");                                -- [22] Force Safepoint                     [50]
+    menu_color = { ui.reference("MISC", "Settings", "Menu color") };                                -- [23] Menu Color                          [51]
+    clantag = ui.reference("MISC", "Miscellaneous", "Clan tag spammer");                            -- [24] Clantag Spammer                     [52]
+    damage_bind = { ui.reference('RAGE', 'Aimbot', 'Minimum damage override') };                    -- [25] Minimum Damage Override             [53]
+}
+local lp = entity.get_local_player()
+
+states = {
+	[1] = "Global",
+    [2] = "Standing",
+    [3] = "Running",
+    [4] = "Slow Motion",
+	[5] = "Air",
+    [6] = "Air-Duck",
+    [7] = "Duck"
+}
+local aa_tabs = ui.new_combobox("AA", "Anti-aimbot angles", "Tabs", {"Anti-Aimbot", "Extra"})
+local aa_type = ui.new_combobox("AA", "Anti-aimbot angles", "Anti-Aim Type", {"None", "Presets", "Builder"})
+
+local lua = {
+    main_switch = ui.new_checkbox("AA", "Other", "\aE8E8E8FFEnable \aBBC0F3FFEvade\aE8E8E8FF.lua"),
+
+
+    home = {
+        label1 = ui.new_label("AA", "Other", " \n"),
+        manager = ui.new_combobox("AA", "Other", "  \aBBC0F3FF➤ \aE8E8E8FFTab Manager", {"\aBBC0F3FF❓ \aE8E8E8FFInfo", "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot", "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA", "\aBBC0F3FF✎ \aE8E8E8FFVisuals", "\aBBC0F3FF⚙️ \aE8E8E8FFExtra"}),
+        
+        spacer1 = ui.new_label("AA", "Other", " \n"),
+        label2 = ui.new_label("AA", "Other", "ㅤ\aBBC0F3FF- \aB3B7DDE2User: \aE8E8E8FF"..entity.get_player_name(lp)),
+        label3 = ui.new_label("AA", "Other", "ㅤ\aBBC0F3FF- \aB3B7DDE2Build: \aE8E8E8FF"..string.lower(curr_build)),
+        
+        spacer2 = ui.new_label("AA", "Other", " \n"),
+        fs = ui.new_checkbox("AA", "Other", "\aBBC0F3FFFreestanding", {"Default"}),
+        fs_key = ui.new_hotkey("AA", "Other", "\nFreestanding Bind", true),
+        osaa = ui.new_checkbox("AA", "Other", "\aBBC0F3FFOn shot anti-aim", {"Default"}),
+        osaa_key = ui.new_hotkey("AA", "Other", "\nOSAA BIND", true),
+    },
+
+    info = {
+        label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFInformation \n\n "),
+        label2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        label3 = ui.new_label("AA", "Anti-aimbot angles", "Welcome \aBBC0F3FF"..entity.get_player_name(lp).." \aE8E8E8FFto Evade \aA8A8A8EE[\aFFFFFFFFgame\aB7D658FFsense\aA8A8A8EE] \n "),
+        label4 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        label5 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF- \aE8E8E8FFLast Update: [\aBBC0F3FF20 / 09 / 2023\aE8E8E8FF]"),
+        label6 = ui.new_label("AA", "Anti-aimbot angles", "ㅤ\aBBC0F3FF- \aF8F8F8FFUpdate Log: "),
+        label7 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCAdded Tab Manager"),
+        label8 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCFixed Icons"),
+        label9 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCFixed Colors"),
+    },
+
+    com = {
+        label1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        label2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        label3 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFConsole Commands"),
+
+        label4 = ui.new_label("AA", "Anti-aimbot angles", "ㅤ\aBBC0F3FF/\aE8E8E8FFdiscord"),
+        label5 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCRedirects you to our discord server."),
+
+        label6 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+
+        label7 = ui.new_label("AA", "Anti-aimbot angles", "ㅤ\aBBC0F3FF/\aE8E8E8FFload_preset"),
+        label8 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCLets you load these presets:"),
+        label9 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CC/load_preset Jitter."),
+        label10 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CC/load_preset Delayed"),
+        label11 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CC/load_preset Defensive"),
+    },
+
+    preset = {
+
+        label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFPresets"),
+        spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        pre_type = ui.new_combobox("AA", "Anti-aimbot angles", "\n", {"Off", "Meta Jitter", "Delayed", "Evade Special"}),
+    },
+
+    def = {
+
+        toggle = ui.new_checkbox("AA", "Anti-aimbot angles", "\aE8E8E8FFOverride \aBBC0F3FFDefensive \aE8E8E8FFAnti-aimbot"),
+        spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        def_conds = ui.new_multiselect("AA", "Anti-aimbot angles", "Conditions", {"Standing", "Air-Duck", "Air", "Running", "Duck", "Predict Visible", "Visible", "On Shot", "When Landing", "Unduck"}),
+
+        spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+
+
+        label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFYaw"),
+        spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        yaw_type = ui.new_combobox("AA", "Anti-aimbot angles", "Yaw Types", {"Static", "Jitter", "Slow Jitter", "Spin"}),
+        yaw = ui.new_slider("AA", "Anti-aimbot angles", "Base Yaw", -100, 100, 0),
+        radius = ui.new_slider("AA", "Anti-aimbot angles", "Radius", -50, 50, 0),
+        delay = ui.new_slider("AA", "Anti-aimbot angles", "Speed / Delay", 1, 45, 1),
+        spin_radius = ui.new_slider("AA", "Anti-aimbot angles", "Radius", 0, 360, 0, true, "°"),
+        spin_direction = ui.new_slider("AA", "Anti-aimbot angles", "Direction", 1, 2, 1, true, "*", 1, {[1] = "Left", [2] = "Right"}),
+
+
+        spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        label2 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFPitch"),
+        spacer4 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        variation = ui.new_slider("AA", "Anti-aimbot angles", "Variation", 0, 50, 0, true, "°"),
+        flick_rate = ui.new_slider("AA", "Anti-aimbot angles", "Flick Rate", 0, 50, 0),
+        start_degree = ui.new_slider("AA", "Anti-aimbot angles", "Start Angle", 1, 3, 1, true, "*", 1, {[1] = "Down", [2] = "Zero", [3] = "Up"}),
+
+        spacer5 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        label3 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFLag Switch"),
+        spacer6 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        pause_time = ui.new_slider("AA", "Anti-aimbot angles", "Pause", 0, 100, 0, true, "s", 1, {[0] = "Disabled"}),
+    },
+
+
+    visuals = {
+        toggle = ui.new_checkbox("AA", "Anti-aimbot angles", "Enable Visuals"),
+
+        spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFCrosshair Indicators"),
+        spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        colpick1 = ui.new_color_picker("AA", "Anti-aimbot angles", "LOL", 255, 255, 255, 255),
+        crosshair = ui.new_combobox("AA", "Anti-aimbot angles", "\n", {"-", "Basic", "Modern", "New"}),
+
+        spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        label2 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFOther Indicators"),
+        spacer4 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        colpick2 = ui.new_color_picker("AA", "Anti-aimbot angles", "LOL", 255, 255, 255, 255),
+        other = ui.new_multiselect("AA", "Anti-aimbot angles", "\n", {"Bomb Timer", "Defensive", "Low Ammo", "Velocity", "Debug Panel"}),
+
+        spacer5 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        label3 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFLogs"),
+        spacer6 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        colpick3 = ui.new_color_picker("AA", "Anti-aimbot angles", "LOL", 255, 255, 255, 255),
+        logs = ui.new_multiselect("AA", "Anti-aimbot angles", "\n", {"Hit", "Miss", "Console Hit", "Console Miss"}),
+    }
+
+}
+
+
+local cond_select = ui.new_combobox("AA", "Anti-aimbot angles", "Anti-Aim Conditions", {states[1], states[2], states[3], states[4], states[5], states[6], states[7], states[8]})
+for i = 1, #states do
+    antiaim[i] = {
+
+        ovr_state = ui.new_checkbox("AA", "Anti-aimbot angles", "Override \aBBC0F3FF"..states[i].."\aE8E8E8FF Anti-Aim"),
+
+        spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFAdjust Body Yaw"),
+        spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        body_movement = ui.new_combobox("AA", "Anti-aimbot angles", "\n", {"Default", "Jitter", "Slow", "Choked", "Evade"}),
+        b_yaw = ui.new_slider("AA", "Anti-aimbot angles", "Base Yaw", -100, 100, 0),
+        b_rad = ui.new_slider("AA", "Anti-aimbot angles", "Radius", -50, 50, 0),
+        b_delay = ui.new_slider("AA", "Anti-aimbot angles", "Speed / Delay", 1, 25, 1),
+
+        spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        label2 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFYaw Jitter"),
+        spacer4 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        jitter_type = ui.new_combobox("AA", "Anti-aimbot angles", "\n", {"Off", "Offset", "Center", "Stomp"}),
+        j_rad = ui.new_slider("AA", "Anti-aimbot angles", "Radius", -50, 50, 0),
+
+        spacer5 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        label3 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFDesync"),
+        spacer6 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        desync_type = ui.new_combobox("AA", "Anti-aimbot angles", "\n", {"Gamesense", "Reversed"}),
+
+        spacer7 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        force_def = ui.new_checkbox("AA", "Anti-aimbot angles", "Force \aBBC0F3FFDefensive \aE8E8E8FFAnti-Aim")
+    }
+end
+
+local function fix_antiaim_visibility()
+
+    local when_builder = ui.get(lua.main_switch) and ui.get(aa_type) == "Builder" and ui.get(aa_tabs) == "Anti-Aimbot"
+    local when_preset = ui.get(lua.main_switch) and ui.get(aa_type) == "Presets" and ui.get(aa_tabs) == "Anti-Aimbot"
+    ui.set_visible(lua.preset.label1, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset)
+    ui.set_visible(lua.preset.spacer1, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset)
+    ui.set_visible(lua.preset.pre_type, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset)
+
+
+    ui.set_visible(aa_tabs, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(lua.main_switch))
+    ui.set_visible(aa_type, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(lua.main_switch) and ui.get(aa_tabs) == "Anti-Aimbot")
+    ui.set_visible(cond_select, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(lua.main_switch) and ui.get(aa_type) == "Builder")
+    for i = 1, #states do
+        local show_rad = ui.get(antiaim[i].body_movement) ~= "Default"
+        local show_delay = ui.get(antiaim[i].body_movement) == "Slow" or ui.get(antiaim[i].body_movement) == "Evade"
+        ui.set_visible(antiaim[i].ovr_state, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].spacer1, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].label1, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].body_movement, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].spacer2, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].b_yaw, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].b_rad, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and show_rad)
+        ui.set_visible(antiaim[i].b_delay, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and show_delay)
+
+        ui.set_visible(antiaim[i].spacer3, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].label2, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].spacer4, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].jitter_type, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].j_rad, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and ui.get(antiaim[i].jitter_type) ~= "Off")
+
+        ui.set_visible(antiaim[i].force_def, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].spacer7, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].desync_type, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].spacer6, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].label3, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].spacer5, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+
+
+        ui.set_visible(lua.def.toggle, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.spacer1, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.def_conds, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.spacer2, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.label1, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.spacer3, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.yaw_type, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.yaw, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.radius, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and ui.get(lua.def.yaw_type) ~= "Spin" and ui.get(lua.def.yaw_type) ~= "Static")
+        ui.set_visible(lua.def.delay, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and ui.get(lua.def.yaw_type) ~= "Jitter" and ui.get(lua.def.yaw_type) ~= "Static")
+        ui.set_visible(lua.def.spin_radius, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and ui.get(lua.def.yaw_type) == "Spin")
+        ui.set_visible(lua.def.spin_direction, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and ui.get(lua.def.yaw_type) == "Spin")
+        ui.set_visible(lua.def.spacer3, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.label2, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.spacer4, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.variation, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.flick_rate, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.start_degree, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+
+        ui.set_visible(lua.def.spacer5, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.label3, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.spacer6, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.pause_time, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+
+
+        ui.set_visible(antiaim[1].ovr_state, false)
+    end
+end
+
+local function getcombo(table, value)
+	if table == nil then
+		return false;
+	end
+
+    table = ui.get(table);
+    for i=0, #table do
+        if table[i] == value then
+            return true;
+        end
+    end
+
+    return false
+end
+
+local function vector_angles(start_x, start_y, start_z, dest_x, dest_y, dest_z)
+    local origin_x, origin_y, origin_z
+    local target_x, target_y, target_z
+    if dest_x == nil then
+        target_x, target_y, target_z = start_x, start_y, start_z
+        origin_x, origin_y, origin_z = client.eye_position()
+        if origin_x == nil then
+            return
+        end
+    else
+        origin_x, origin_y, origin_z = start_x, start_y, start_z
+        target_x, target_y, target_z = dest_x, dest_y, dest_z
+    end
+
+    local delta_x, delta_y, delta_z = target_x-origin_x, target_y-origin_y, target_z-origin_z
+
+    if delta_x == 0 and delta_y == 0 then
+        return 0, (delta_z > 0 and 270 or 90)
+    else
+        local yaw = math_deg(math_atan2(delta_y, delta_x))
+
+        local hyp = math_sqrt(delta_x*delta_x + delta_y*delta_y)
+        local pitch = math_deg(math_atan2(-delta_z, hyp))
+
+        return pitch, yaw
+    end
+end
+
+
+local var = {
+    side,
+    body_yaw = 0,
+    switch = false,
+    legit_aa = false,
+    got_left = false,
+    got_right = false,
+    rollroyse = false,
+    clantag_restore = false,
+    ground = 0,
+    mode = nil,
+    anti_backstab = false,
+    build = "stable"
+}
+
+local def_vars = {
+    is_true = false,
+    set_loop = 0,
+    exp_ticks = 0,
+    pitch_variation = 0,
+    spin_fix = 0,
+    base = 0,
+    latest_duck = 0,
+    current_mag_amount = 0,
+    correct_mag_timer = 0
+}
+
+local function keep_updt()
+    def_vars.is_true = false
+end
+local time_to_ticks = function(t)
+    return math.floor(t / globals.tickinterval() + 0.5)
+end
+
+doubletap_charged = function ()
+    return anti_aim.get_double_tap()
+end
+
+get_desync = function ()
+    return anti_aim.get_desync(1)
+end
+
+get_delta = function ()
+    local localplayer = entity.get_local_player()
+    if not localplayer then
+        return ""
+    end
+    return entity.get_prop(localplayer, "m_flPoseParameter", 11) * 120 - 60
+end
+
+get_ground_state = function ()
+    local localplayer = entity.get_local_player();
+    local flags = entity.get_prop(localplayer, 'm_fFlags');
+
+end
+
+
+
+get_player_state = function (self)
+
+    local localplayer = entity.get_local_player()
+    if not localplayer then
+        return ""
+    end
+    local flags = entity.get_prop(localplayer, "m_fFlags");
+    local weapon = entity.get_player_weapon(localplayer);
+    local x, y, z = entity.get_prop(localplayer, "m_vecVelocity");
+    velocity = math.sqrt(x * x + y * y + z * z);
+    if not weapon then
+        return "", false;
+    end
+
+    if bit.band(flags, 1) == 0 then
+        var.ground = 0
+    elseif var.ground <= 5 then
+        var.ground = var.ground + 1
+    end
+
+    local in_air = var.ground <= 5;
+    local duckamount = entity.get_prop(localplayer, "m_flDuckAmount");
+    local slowmotion = ui.get(menu.slowmotion[1]) and ui.get(menu.slowmotion[2]);
+
+    if in_air and duckamount > 0 then
+        return "Air-Duck";
+    elseif in_air then
+        return "Air";
+    elseif ui.get(menu.fakeduck) or duckamount > 0 and not in_air then
+        return "Duck";
+    elseif slowmotion and velocity > 20 then
+        return "Slow Motion";
+    elseif velocity > 20 then
+        return "Running";
+    else
+        return "Standing";
+    end
+end
+
+
+local function func_timer()
+
+    def_vars.correct_mag_timer = def_vars.correct_mag_timer + 0.5
+    if def_vars.correct_mag_timer < 10 and getcombo(lua.def.def_conds, "On Shot") then
+        def_vars.is_true = true
+    end
+
+end
+
+local function on_shot()
+    local lp = entity.get_local_player()
+    if not lp or not entity.is_alive(lp) then
+        return
+    end
+    local weapon = entity.get_player_weapon(lp)
+
+    def_vars.correct_mag_timer = 0
+end
+
+
+local function on_land()
+    local lp = entity.get_local_player()
+    if not lp or not entity.is_alive(lp) then
+        return
+    end
+    local self_index = c_entity.new(lp)
+    local self_anim_state = self_index:get_anim_state()
+    if not self_anim_state then
+        return
+    end
+    if self_anim_state.hit_in_ground_animation and getcombo(lua.def.def_conds, "When Landing") then
+        def_vars.is_true = true
+    end
+end
+
+
+
+
+
+local function on_unduck()
+    local lp = entity.get_local_player()
+    if not lp or not entity.is_alive(lp) then
+        return
+    end
+    local duck_amount = entity.get_prop(lp, "m_flDuckAmount")
+    local duck_diff = duck_amount - def_vars.latest_duck
+    def_vars.latest_duck = duck_amount
+
+    if duck_diff < 0 and getcombo(lua.def.def_conds, "Unduck") then
+        def_vars.is_true = true
+    end
+end
+
+local function get_lc(cmd)
+    local lp = entity.get_local_player()
+    if not lp or not entity.is_alive(lp) then
+        return
+    end
+    local last_origin = vector(0, 0, 0)
+
+    local origin = vector(entity.get_origin(lp))
+    local breaking_lc = (last_origin - origin):length2dsqr() > 4096
+
+
+    if cmd.chokedcommands == 0 then
+        last_origin = origin
+    end
+
+
+end
+
+
+local function pre_prediction_logic()
+    l_dmg, r_dmg, c_dmg = 0, 0, 0
+
+	local local_player = get_local_player()
+	if local_player == nil or not entity.is_alive(local_player) then
+		return
+	end
+
+	local v_origin_local = Vector3(get_prop(local_player, "m_vecAbsOrigin"))
+	if v_origin_local.x == nil then
+		return
+	end
+
+	local v_eye_local = Vector3(client.eye_position())
+	if v_eye_local.x == nil then
+		return
+	end
+
+	local players = get_all_players(true)
+
+	local closestplayer = nil
+	local pitch, yaw, roll = client.camera_angles()
+	local cam_angle = Vector3(0, yaw, 0)
+
+	local fov = 180
+
+	for i=1, #players do
+		local entindex = players[i]
+		if entity_is_enemy(entindex) and entity_is_alive(entindex) and not entity_is_dormant(entindex) then
+			local v_origin_enemy = Vector3(entity.get_prop(entindex, "m_vecOrigin"))
+			local cur_fov = get_FOV(cam_angle, v_origin_local, v_origin_enemy)
+			if cur_fov < fov then
+				fov = cur_fov
+				closestplayer = entindex
+			end
+		end
+	end
+
+	local v_origin_enemy = Vector3(entity.get_prop(closestplayer, "m_vecOrigin"))
+
+	local at_pitch, at_yaw = vector_angles(v_origin_local.x, v_origin_local.y, v_origin_local.z, v_origin_enemy.x, v_origin_enemy.y, v_origin_enemy.z)
+
+	cam_angle = Vector3(at_pitch, at_yaw, 0)
+
+	if closestplayer ~= nil then
+		local v_viewoffset_enemy = Vector3(entity.get_prop(closestplayer, "m_vecViewOffset"))
+
+		local v_eye_enemy = v_origin_enemy + v_viewoffset_enemy
+
+		local l_id, r_id, c_id = 0, 0		
+
+		local l_add, r_add = o_scan_fineness, o_scan_fineness
+		local a_left = -angle_right(cam_angle)
+		local a_right = angle_right(cam_angle)
+
+		v_left = v_eye_local + a_left * l_add
+		v_right = v_eye_local + a_right * r_add
+		
+		local v_head_local_x, v_head_local_y, v_head_local_z = entity.hitbox_position(local_player, 0)
+
+		c_id, c_dmg = client.trace_bullet(closestplayer, v_eye_enemy.x, v_eye_enemy.y, v_eye_enemy.z, v_head_local_x, v_head_local_y, v_head_local_z)
+
+        --[[
+		if c_dmg > 0 then
+			return
+		end
+
+        ]]
+
+		while l_dmg < 1 and l_add < o_scan_length do
+			v_left = v_eye_local + a_left * l_add
+			l_id, l_dmg = client.trace_bullet(closestplayer, v_eye_enemy.x, v_eye_enemy.y, v_eye_enemy.z, v_left.x , v_left.y, v_left.z)
+			l_add = l_add + o_scan_fineness
+		end
+
+		while r_dmg < 1 and r_add < o_scan_length do
+			v_right = v_eye_local + a_right * r_add
+			r_id, r_dmg = client.trace_bullet(closestplayer, v_eye_enemy.x, v_eye_enemy.y, v_eye_enemy.z, v_right.x , v_right.y, v_right.z)
+			r_add = r_add + o_scan_fineness
+		end
+	end
+
+    local vals_tbl = {l_dmg, r_dmg}
+    for i = 1, #vals_tbl do
+        if vals_tbl[i] > 0 and getcombo(lua.def.def_conds, "Predict Visible") and c_dmg <= 0 then
+            def_vars.is_true = true
+        end
+    end
+
+    if c_dmg > 0 and getcombo(lua.def.def_conds, "Visible") then
+        def_vars.is_true = true
+    end
+end
+
+
+local pre = {
+    tick_delay,
+    switch_tick,
+    switch,
+    choke_hold,
+    multiplier = 1.2,
+    start_time = globals.realtime()
+
+}
+
+local lp_choke = 0
+
+local function presets(arg)
+
+    ui.set(menu.freestanding_body_yaw, false)
+
+
+    arg.force_defensive = false
+    if not ui.get(lua.main_switch) and not ui.get(aa_type) == "Presets" then return end
+    ui.set(menu.pitch[1], "Default")
+
+    if ui.get(lua.preset.pre_type) == "Meta Jitter" then
+        ui.set(menu.yaw[2], 12)
+        ui.set(menu.yaw_jitter[1], "Center")
+        ui.set(menu.yaw_jitter[2], 62)
+        ui.set(menu.body_yaw[1], "Jitter")
+        ui.set(menu.body_yaw[2], 1)
+        ui.set(menu.roll, 0)
+    elseif ui.get(lua.preset.pre_type) == "Delayed" then
+        arg.force_defensive = false
+
+        if arg.chokedcommands == 1 then
+            lp_choke = lp_choke + 1 * pre.multiplier
+        end
+
+        if lp_choke > 30 then
+            lp_choke = 0
+        end
+
+        if lp_choke > 15 then
+            ui.set(menu.yaw[2], -21)
+            ui.set(menu.body_yaw[2], -180)
+        else
+            ui.set(menu.yaw[2], 41)
+            ui.set(menu.body_yaw[2], 180)
+        end
+
+        ui.set(menu.yaw_jitter[1], "Center")
+        ui.set(menu.yaw_jitter[2], 0)
+        ui.set(menu.body_yaw[1], "Static")
+
+        ui.set(menu.roll, 0)
+    elseif ui.get(lua.preset.pre_type) == "Evade Special" then
+
+
+        arg.force_defensive = false
+
+        local current_time = globals.realtime()
+        local r_t = (1 + math.cos((current_time - pre.start_time) * (14))) / 2
+        if r_t > 0.5 then
+            ui.set(menu.yaw[2], -16)
+            ui.set(menu.body_yaw[2], -180)
+        else
+            ui.set(menu.yaw[2], 47)
+            ui.set(menu.body_yaw[2], 180)
+        end
+        ui.set(menu.yaw_jitter[1], "Center")
+        ui.set(menu.yaw_jitter[2], 0)
+        ui.set(menu.body_yaw[1], "Static")
+        ui.set(menu.roll, 0)
+    end
+end
+
+local def_states_table = {
+
+    "Standing",
+    "Air-Duck",
+    "Air",
+    "Running",
+    "Duck",
+
+}
+local pitch_num = {
+
+    1,
+    2,
+    3
+}
+
+local pitch_str = {
+    "Down",
+    "Off",
+    "Up"
+}
+
+
+
+
+local function defensive_logic(arg)
+    local lp = entity.get_local_player()
+    if not lp or not entity.is_alive(lp) then
+        return
+    end
+    local weapon = entity.get_player_weapon(lp)
+        
+    if not ui.get(lua.def.toggle) then return end
+    
+
+    local lag_timer = entity.get_prop(lp, "m_nTickbase") % ui.get(lua.def.pause_time) == 0
+    local air = bit.band(entity.get_prop(lp, "m_fFlags"), 1) == 0
+
+
+    local sv_tick = globals.tickcount()
+    local current_time = globals.realtime()
+    local pitch_variable = ((1 + math.cos((current_time - pre.start_time) * 40)) / 2) * 360
+    local slow_yaw_var = ((1 + math.cos((current_time - pre.start_time) * ui.get(lua.def.delay))) / 2) * 30
+
+    local compensate_camera = client.camera_angles() - 360
+    arg.force_defensive = false
+    local view_x, view_y, roll = client.camera_angles();
+    if arg.chokedcommands == 1 then
+        lp_choke = lp_choke + 1 * pre.multiplier
+    end
+    if lp_choke > 60 then
+        lp_choke = 0
+    end
+
+
+    if ui.get(lua.def.spin_radius) > 340 then
+        def_vars.spin_fix = ui.get(lua.def.spin_radius) - 23
+    else
+        def_vars.spin_fix = ui.get(lua.def.spin_radius)
+    end
+    if def_vars.set_loop <= def_vars.spin_fix then
+        def_vars.set_loop = def_vars.set_loop + 1 + ui.get(lua.def.delay) * 2
+    end
+    if def_vars.set_loop > def_vars.spin_fix then
+        def_vars.set_loop = 0
+    end
+
+
+
+    local yaw_val = (def_vars.set_loop - def_vars.spin_fix / 2)
+
+    if ui.get(lua.def.spin_direction) == 1 then
+        yaw_val = (-def_vars.set_loop + def_vars.spin_fix / 2)
+    end
+
+
+
+    if ui.get(lua.def.spin_radius) < 230 then
+        def_vars.base = ui.get(lua.def.yaw)
+    else
+        def_vars.base = 0
+    end
+
+
+    for i = 1, #def_states_table do
+        if get_player_state() == def_states_table[i] and getcombo(lua.def.def_conds, def_states_table[i]) == true then
+            def_vars.is_true = true
+        end
+        if ui.get(menu.doubletap[2]) == true or ui.get(menu.onshot[2]) == true then 
+            if def_vars.is_true == true and not ui.get(menu.fakeduck) then
+                arg.force_defensive = true
+                arg.discharge_pending = false
+
+
+                if ui.get(lua.def.pause_time) > 0 then
+                    arg.force_defensive = false
+                end
+                if air and ui.get(lua.def.pause_time) > 0 then
+                    
+                    ui.set(menu.fakeduck, lag_timer and "Always on" or "On hotkey")
+                    ui.set(menu.ragebot_toggle, false)
+                    
+                    arg.in_duck = not lag_timer
+                end
+
+
+
+                local current_time = globals.realtime()
+                ui.set(menu.yaw_jitter[1], "Center")
+                ui.set(menu.yaw_jitter[2], 0)
+                ui.set(menu.body_yaw[1], "Off")
+                ui.set(menu.body_yaw[2], 1)
+                ui.set(menu.roll, 0)
+
+
+                if ui.get(lua.def.yaw_type) == "Static" then
+                    ui.set(menu.yaw[2], ui.get(lua.def.yaw))
+                    ui.set(menu.yaw_jitter[2], 0)
+                elseif ui.get(lua.def.yaw_type) == "Jitter" then
+                    ui.set(menu.yaw[2], ui.get(lua.def.yaw))
+                    ui.set(menu.yaw_jitter[1], "Center")
+                    ui.set(menu.yaw_jitter[2], ui.get(lua.def.radius) * 2.5)
+                    ui.set(menu.body_yaw[1], "Jitter")
+                    ui.set(menu.body_yaw[2], 1)
+
+                elseif ui.get(lua.def.yaw_type) == "Slow Jitter" then
+                    ui.set(menu.body_yaw[1], "Static")
+                    if slow_yaw_var >= 15 then
+                        ui.set(menu.body_yaw[2], -60)
+                        ui.set(menu.yaw[2], (ui.get(lua.def.radius) / -1 + ui.get(lua.def.yaw)))
+                    else
+                        ui.set(menu.body_yaw[2], 60)
+                        ui.set(menu.yaw[2], (ui.get(lua.def.radius) / 1 + ui.get(lua.def.yaw)))
+                    end
+                    ui.set(menu.yaw_jitter[2], 0)
+                elseif ui.get(lua.def.yaw_type) == "Spin" then
+                    ui.set(menu.yaw[2], yaw_val + def_vars.base)
+                    ui.set(menu.yaw_jitter[2], 0)
+                    ui.set(menu.body_yaw[1], "Static")
+                    ui.set(menu.body_yaw[2], 50)
+                end
+
+                for i = 1, #pitch_str do
+                    ui.set(menu.pitch[1], pitch_str[ui.get(lua.def.start_degree)])
+
+
+                    local exp_delay_ticks = time_to_ticks(ui.get(lua.def.flick_rate) / 10)
+                    def_vars.exp_ticks = (def_vars.exp_ticks + 1) % (exp_delay_ticks + 1)
+                
+                    
+                    local exp_half_delay_ticks = math.floor(exp_delay_ticks / 2)
+                    exp_switch = def_vars.exp_ticks < exp_half_delay_ticks
+                    if def_vars.pitch_variation < 50 then
+                        def_vars.pitch_variation = def_vars.pitch_variation + 2
+                    end
+
+                    if def_vars.pitch_variation >= ui.get(lua.def.variation) then
+                        def_vars.pitch_variation = 0
+                    end
+
+                    if exp_switch == false and ui.get(lua.def.flick_rate) ~= 0 then
+                        ui.set(menu.pitch[1], "Custom")
+                        ui.set(menu.pitch[2], -89 + def_vars.pitch_variation)
+                    end
+                end
+            end
+        end 
+    end
+
+
+end
+
+local function disablers()
+
+    
+
+    if ui.get(lua.home.fs_key) and ui.get(lua.home.fs) then
+        ui.set(menu.freestand[1], ui.get(lua.home.fs))
+        ui.set(menu.freestand[2], "Always on")
+
+        ui.set(menu.pitch[1], "Down")
+        ui.set(menu.yaw[2], 0)
+        ui.set(menu.body_yaw[1], "Static")
+        ui.set(menu.yaw_jitter[2], 0)
+    else
+        ui.set(menu.freestand[1], false)
+        ui.set(menu.freestand[2], "On hotkey")
+    end
+
+
+
+    if ui.get(lua.home.osaa_key) and ui.get(lua.home.osaa) then
+        ui.set(menu.onshot[1], ui.get(lua.home.osaa))
+        ui.set(menu.onshot[2], "Always on")
+    else
+        ui.set(menu.onshot[1], false)
+        ui.set(menu.onshot[2], "On hotkey")
+    end
+
+
+end
+local text_dst = 0
+local text_spr = 8
+local anim1 = 0
+
+local function indicators()
+    local lp = entity.get_local_player()
+    
+    local screensize = { client.screen_size() }
+    local center = { screensize[1] / 2, screensize[2] / 2 }
+    local screen_x = center[1]
+    local screen_y = center[2]
+    local ss = { screensize[1] / 2, screensize[2] / 2 }
+    local valid = lp ~= nil and entity.is_alive(lp)
+    local scoped
+    local resume_scope
+    if not valid then
+        return
+    end
+    local local_overlap = anti_aim.get_overlap()
+    local weapon = entity.get_player_weapon(lp)
+    local weap_name = entity.get_classname(weapon)
+    local get_build = string.upper(curr_build)
+    local nade_alpha = 0
+
+    local rect_x = screen_x - 25
+    local rect_y = screen_y + 31
+    local rect_w = 51
+    local rect_h = 4
+    local rect_t = 1
+
+
+    local vis_tables = {
+
+
+        cols = {
+            crosshair = { ui.get(lua.visuals.colpick1) },
+            other = { ui.get(lua.visuals.colpick2) },
+            logs = { ui.get(lua.visuals.colpick3) },
+
+        },
+        render_strings = {
+            "EVADE  ",
+            get_build.." ",
+        },
+        anims = {
+    
+            alpha = math.abs(1 * math.cos(2 * math.pi * globals.curtime() / 4)) * (255),
+    
+        },
+    
+        nades = {
+
+            "CIncendiaryGrenade",
+            "CHEGrenade",
+            "CMolotovGrenade",
+            "CSmokeGrenade",
+        },
+
+
+
+    }
+
+
+    for i = 1, #vis_tables.nades do 
+
+        if weap_name == vis_tables.nades[i] then
+            nade_alpha = 190
+        end
+    end
+    local active_shit = {}
+
+    active_shit[#active_shit + 1] = ui.get(menu.doubletap[2]) and {("CHARGE"), globals.tickcount() + 250, 0} or active_shit[#active_shit - 1]
+    active_shit[#active_shit + 1] = ui.get(menu.freestand[2]) and {("FREE"), globals.tickcount() + 250, 0} or active_shit[#active_shit - 1]
+    active_shit[#active_shit + 1] = ui.get(menu.fakeduck) and {("F-DUCK"), globals.tickcount() + 250, 0} or active_shit[#active_shit - 2]
+
+
+    --active_shit[#active_shit + 1] = ui.get(menu.freestand[1]) and ui.get(menu.freestand[2]) and "FREE"
+    --active_shit[#active_shit + 1] = ui.get(menu.fakeduck) and "FDUCKING"
+
+
+    if ui.get(lua.visuals.crosshair) == "Basic" then
+
+        renderer.text(screen_x - renderer.measure_text("-", vis_tables.render_strings[2]) / 2, screen_y + 25, vis_tables.cols.crosshair[1], vis_tables.cols.crosshair[2], vis_tables.cols.crosshair[3], vis_tables.cols.crosshair[4] - nade_alpha, "-c", nil, vis_tables.render_strings[1])
+        renderer.text(screen_x + renderer.measure_text("-", vis_tables.render_strings[1]) / 2, screen_y + 25, 255, 255, 255, math.min(255 - nade_alpha, vis_tables.anims.alpha), "-c", nil, vis_tables.render_strings[2])
+        renderer.rectangle(screen_x - 25, screen_y + 31, local_overlap * rect_w, 3, vis_tables.cols.crosshair[1], vis_tables.cols.crosshair[2], vis_tables.cols.crosshair[3], vis_tables.cols.crosshair[4] - nade_alpha - 50)
+
+        -- Outline
+        renderer.rectangle(rect_x, rect_y, rect_w - rect_t, rect_t, 45, 45, 45, 255  - nade_alpha)
+        renderer.rectangle(rect_x, rect_y + rect_t, rect_t, rect_h - rect_t, 45, 45, 45, 255  - nade_alpha)
+        renderer.rectangle(rect_x + rect_w - rect_t, rect_y, rect_t, rect_h - rect_t, 45, 45, 45, 255  - nade_alpha)
+        renderer.rectangle(rect_x + rect_t, rect_y + rect_h - rect_t, rect_w - rect_t, rect_t, 45, 45, 45, 255  - nade_alpha)
+
+        if #active_shit > 0 then
+            for i = 1, #active_shit do
+
+                if anim1 < 8 then
+                    anim1 = anim1 + 0.5
+                end
+
+                renderer.text(screen_x + anim1, screen_y + 31 + (i * 8), 255, 255, 255, 255 , "-c", nil, active_shit[i][1])
+            end
+
+        else
+            if anim1 > 0 then
+                anim1 = anim1 - 0.5
+            end
+        end
+
+    end
+
+
+
+end
+
+local function debug_render()
+
+
+    local localplayer = entity.get_local_player()
+    local screensize = { client.screen_size() }
+    local center = { screensize[1] / 2, screensize[2] / 2 }
+    local screen_x = center[1]
+    local screen_y = center[2]
+    local ss = { screensize[1] / 2, screensize[2] / 2 }
+    local valid = localplayer ~= nil and entity.is_alive(localplayer)
+    local scoped
+    local resume_scope
+
+    if not valid then
+        return
+    end
+
+    renderer.text(screen_x - 10, screen_y + 22, 255, 255, 255, 255, "-c", nil, "")
+    renderer.text(screen_x - 10, screen_y + 22, 255, 255, 255, 255, "-c", nil, "")
+
+end
+--[[
+local function indicators()
+
+    local localplayer = entity.get_local_player()
+    local screensize = { client.screen_size() }
+    local center = { screensize[1] / 2, screensize[2] / 2 }
+    local screen_x = center[1]
+    local screen_y = center[2]
+    local ss = { screensize[1] / 2, screensize[2] / 2 }
+    local valid = localplayer ~= nil and entity.is_alive(localplayer)
+    local scoped
+    local resume_scope
+
+    if not valid then
+        return
+    end
+    local local_overlap = anti_aim.get_overlap()
+
+    local rect_x = screen_x - 25
+    local rect_y = screen_y + 28
+    local rect_w = 50
+    local rect_h = 4
+    local rect_t = 1
+
+    local measure_text1 = renderer.measure_text("-c", "DESYNC DEG ")
+    renderer.text(screen_x - 10, screen_y + 22, 255, 255, 255, 255, "-c", nil, "DESYNC DEG ")
+    renderer.text(screen_x - 24 + measure_text1, screen_y + 22, 174, 176, 235, 255, "-c", nil, math.floor(local_overlap * 60).."."..math.random(0, 9))
+    renderer.rectangle(screen_x - 25, screen_y + 28, local_overlap * rect_w, 3, 255, 255, 255, 255)
+
+    -- Outline
+    renderer.rectangle(rect_x, rect_y, rect_w - rect_t, rect_t, 30, 30, 30, 255)
+    renderer.rectangle(rect_x, rect_y + rect_t, rect_t, rect_h - rect_t, 30, 30, 30, 255)
+    renderer.rectangle(rect_x + rect_w - rect_t, rect_y, rect_t, rect_h - rect_t, 30, 30, 30, 255)
+    renderer.rectangle(rect_x + rect_t, rect_y + rect_h - rect_t, rect_w - rect_t, rect_t, 30, 30, 30, 255)
+
+end
+]]
+
+client.set_event_callback("run_command", function()
+    keep_updt()
+    pre_prediction_logic()
+    func_timer()
+end)
+
+
+
+client.set_event_callback("aim_fire", function()
+
+    on_shot()
+
+end)
+
+client.set_event_callback("pre_render", function()
+
+    on_land()
+end)
+
+
+client.set_event_callback("setup_command", function(arg)
+    ui.set(menu.fakeduck, "On hotkey")
+    ui.set(menu.ragebot_toggle, true)
+    get_lc(arg)
+    on_unduck()
+    presets(arg)
+    defensive_logic(arg)
+    disablers()
+end)
+
+
+
+client.set_event_callback("paint_ui", function()
+
+    indicators()
+
+    fix_antiaim_visibility()
+    if ui.get(lua.main_switch) then
+        ui.set(menu.enabled, true)
+    else
+        ui.set(menu.enabled, false)
+    end
+    
+    ui.set_visible(menu.fakepeek[1], false);
+    ui.set_visible(menu.fakepeek[2], false);
+    ui.set_visible(menu.legmovement, false);
+    ui.set_visible(menu.slowmotion[1], false);
+    ui.set_visible(menu.slowmotion[2], false);
+    ui.set_visible(menu.onshot[1], false);
+    ui.set_visible(menu.onshot[2], false);
+    ui.set_visible(menu.enabled, false);
+    ui.set_visible(menu.pitch[1], false);
+    ui.set_visible(menu.pitch[2], false);
+    ui.set_visible(menu.yaw_base, false);
+    ui.set_visible(menu.yaw[1], false);
+    ui.set_visible(menu.yaw[2], false);
+    ui.set_visible(menu.yaw_jitter[1], false);
+    ui.set_visible(menu.yaw_jitter[2], false);
+    ui.set_visible(menu.body_yaw[1], false);
+    ui.set_visible(menu.body_yaw[2], false);
+    ui.set_visible(menu.freestanding_body_yaw, false);
+    ui.set_visible(menu.edge_yaw, false);
+    ui.set_visible(menu.freestand[1], false);
+    ui.set_visible(menu.freestand[2], false);
+    ui.set_visible(menu.roll, false);
+    ui.set_visible(menu.fakelag_limit, true);
+
+    ui.set_visible(lua.home.label1, ui.get(lua.main_switch))
+    ui.set_visible(lua.home.manager, ui.get(lua.main_switch))
+    ui.set_visible(lua.home.label2, ui.get(lua.main_switch))
+    ui.set_visible(lua.home.label3, ui.get(lua.main_switch))
+    ui.set_visible(lua.home.fs, ui.get(lua.main_switch))
+    ui.set_visible(lua.home.fs_key, ui.get(lua.main_switch))
+    ui.set_visible(lua.home.osaa, ui.get(lua.main_switch))
+    ui.set_visible(lua.home.osaa_key, ui.get(lua.main_switch))
+
+    ui.set_visible(lua.info.label1, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.info.label2, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.info.label3, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.info.label4, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.info.label5, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.info.label6, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.info.label7, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.info.label8, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.info.label9, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+
+    ui.set_visible(lua.com.label1, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.com.label2, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.com.label3, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.com.label4, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.com.label5, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.com.label6, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.com.label7, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.com.label8, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.com.label9, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.com.label10, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.com.label11, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+
+
+    ui.set_visible(lua.visuals.spacer1,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
+    ui.set_visible(lua.visuals.spacer2,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
+    ui.set_visible(lua.visuals.spacer3,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
+    ui.set_visible(lua.visuals.spacer4,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
+    ui.set_visible(lua.visuals.spacer5,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
+    ui.set_visible(lua.visuals.spacer6,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
+
+
+    ui.set_visible(lua.visuals.toggle,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
+    ui.set_visible(lua.visuals.label1,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
+    ui.set_visible(lua.visuals.label2,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
+    ui.set_visible(lua.visuals.label3,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
+    ui.set_visible(lua.visuals.colpick1,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
+    ui.set_visible(lua.visuals.colpick2,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
+    ui.set_visible(lua.visuals.colpick3,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
+    ui.set_visible(lua.visuals.crosshair,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
+    ui.set_visible(lua.visuals.other,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
+    ui.set_visible(lua.visuals.logs,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
+
+
+
+
+end)
+
+
+
+
+client.set_event_callback("shutdown", function()
+    ui.set_visible(menu.fakepeek[1], true)
+    ui.set_visible(menu.fakepeek[2], true)
+    ui.set_visible(menu.legmovement, true)
+    ui.set_visible(menu.slowmotion[1], true)
+    ui.set_visible(menu.slowmotion[2], true)
+    ui.set_visible(menu.onshot[1], true)
+    ui.set_visible(menu.onshot[2], true)
+    ui.set_visible(menu.enabled, true)
+    ui.set_visible(menu.pitch[1], true)
+    ui.set_visible(menu.pitch[2], true)
+    ui.set_visible(menu.yaw_base, true)
+    ui.set_visible(menu.yaw[1], true)
+    ui.set_visible(menu.yaw[2], true)
+    ui.set_visible(menu.yaw_jitter[1], true)
+    ui.set_visible(menu.yaw_jitter[2], true)
+    ui.set_visible(menu.body_yaw[1], true)
+    ui.set_visible(menu.body_yaw[2], true)
+    ui.set_visible(menu.freestanding_body_yaw, true)
+    ui.set_visible(menu.edge_yaw, true)
+    ui.set_visible(menu.freestand[1], true)
+    ui.set_visible(menu.freestand[2], true)
+    ui.set_visible(menu.roll, true)
+    ui.set_visible(menu.legmovement, true)
+end)
