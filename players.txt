@@ -7,6 +7,21 @@ local anti_aim = require 'gamesense/antiaim_funcs' or error("Missing antiaim fun
 local animations = (function ()local a={data={}}function a:clamp(b,c,d)return math.min(d,math.max(c,b))end;function a:animate(e,f,g)if not self.data[e]then self.data[e]=0 end;g=g or 4;local b=globals.frametime()*g*(f and-1 or 1)self.data[e]=self:clamp(self.data[e]+b,0,1)return self.data[e]end;return a end)()
 js_loadstring = panorama.loadstring([[ return { OpenExternalBrowserURL: function(url) { void SteamOverlayAPI.OpenExternalBrowserURL(url) } } ]])()
 writefile("login_details.txt", "")
+writefile("evade_user.txt", "")
+
+local function incrementLoadCount()
+    local count = database.read("evade_stats")
+    if count == nil then
+        count = 0
+    end
+
+    count = count + 1
+    database.write("evade_stats", count)
+
+    return count
+end
+local loadCount = incrementLoadCount()
+
 local c_entity = require("gamesense/entity")
 local curr_build = "Source"
 -- multi-color console printing
@@ -18,6 +33,15 @@ local login_details = {
 
 }
 
+local play_data = {
+
+    start_time = globals.curtime(),
+    seconds = 0,
+    minutes = 0,
+    hours = 0,
+    hits = 0,
+    misses = 0
+}
 
 
 client.set_event_callback("console_input", function(text)
@@ -131,6 +155,37 @@ local menu = {
     clantag = ui.reference("MISC", "Miscellaneous", "Clan tag spammer");                            -- [24] Clantag Spammer                     [52]
     damage_bind = { ui.reference('RAGE', 'Aimbot', 'Minimum damage override') };                    -- [25] Minimum Damage Override             [53]
 }
+
+
+
+client.set_event_callback("shutdown", function()
+    ui.set_visible(menu.fakepeek[1], true)
+    ui.set_visible(menu.fakepeek[2], true)
+    ui.set_visible(menu.legmovement, true)
+    ui.set_visible(menu.slowmotion[1], true)
+    ui.set_visible(menu.slowmotion[2], true)
+    ui.set_visible(menu.onshot[1], true)
+    ui.set_visible(menu.onshot[2], true)
+    ui.set_visible(menu.enabled, true)
+    ui.set_visible(menu.pitch[1], true)
+    ui.set_visible(menu.pitch[2], true)
+    ui.set_visible(menu.yaw_base, true)
+    ui.set_visible(menu.yaw[1], true)
+    ui.set_visible(menu.yaw[2], true)
+    ui.set_visible(menu.yaw_jitter[1], true)
+    ui.set_visible(menu.yaw_jitter[2], true)
+    ui.set_visible(menu.body_yaw[1], true)
+    ui.set_visible(menu.body_yaw[2], true)
+    ui.set_visible(menu.freestanding_body_yaw, true)
+    ui.set_visible(menu.edge_yaw, true)
+    ui.set_visible(menu.freestand[1], true)
+    ui.set_visible(menu.freestand[2], true)
+    ui.set_visible(menu.roll, true)
+    ui.set_visible(menu.legmovement, true)
+
+end)
+
+
 local lp = entity.get_local_player()
 
 states = {
@@ -145,6 +200,37 @@ states = {
 local aa_tabs = ui.new_combobox("AA", "Anti-aimbot angles", "Tabs", {"Anti-Aimbot", "Extra"})
 local aa_type = ui.new_combobox("AA", "Anti-aimbot angles", "Anti-Aim Type", {"None", "Presets", "Builder"})
 
+local login_menu = {
+
+    no_access_msg1 = ui.new_label("AA", "Anti-aimbot angles", "You're not logged in! \n Time: "..globals.curtime()),
+    login_spacer = ui.new_label("AA", "Anti-aimbot angles", " "),
+    user_label = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFUsername"),
+    enter_user = ui.new_textbox("AA", "Anti-aimbot angles", "Username"),
+    pass_label = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFPassword"),
+    enter_pass = ui.new_textbox("AA", "Anti-aimbot angles", "Password"),
+}
+
+
+local login_button = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFLoad", function ()
+    get_log_vals = (ui.get(login_menu.enter_user).." "..ui.get(login_menu.enter_pass))
+    get_login = get_log_vals == "" and "NULL" or get_log_vals == " " and "NULL" or get_log_vals == "  " and "NULL" or get_log_vals
+    if string.find(login_details.web_info, get_login) then
+        login_details.access = true
+        client.color_log(235, 220, 255, "Successfully Loaded Evade!")
+        writefile("login_details.txt", get_login)
+        writefile("evade_user.txt", ui.get(login_menu.enter_user))
+    else
+        if get_log_vals == "" or get_log_vals == " " or get_log_vals == "  " then
+            login_details.access = false
+            client.color_log(255, 180, 180, "Insufficient Credentials")
+        else
+            login_details.access = false
+            client.color_log(255, 180, 180, "Incorrect Username Or Password!")
+        end
+    end
+end)
+
+
 local lua = {
 
     home = {
@@ -152,10 +238,17 @@ local lua = {
         manager = ui.new_combobox("AA", "Other", "  \aBBC0F3FF➤ \aE8E8E8FFTab Manager", {"\aBBC0F3FF❓ \aE8E8E8FFInfo", "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot", "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA", "\aBBC0F3FF✎ \aE8E8E8FFVisuals", "\aBBC0F3FF⚙️ \aE8E8E8FFExtra"}),
         
         spacer1 = ui.new_label("AA", "Other", " \n"),
-        label2 = ui.new_label("AA", "Other", "ㅤ\aBBC0F3FF- \aB3B7DDE2User: \aE8E8E8FF"..entity.get_player_name(lp)),
+        label2 = ui.new_label("AA", "Other", "ㅤ\aBBC0F3FF- \aB3B7DDE2User: \aE8E8E8FF".."unknown"),
         label3 = ui.new_label("AA", "Other", "ㅤ\aBBC0F3FF- \aB3B7DDE2Build: \aE8E8E8FF"..string.lower(curr_build)),
         
         spacer2 = ui.new_label("AA", "Other", " \n"),
+
+
+        label4 = ui.new_label("AA", "Other", "ㅤTime Elapsed:"),
+        hours = ui.new_label("AA", "Other", "\aBBC0F3FF"..""),
+        minutes = ui.new_label("AA", "Other", "\aBBC0F3FF"..""),
+        seconds = ui.new_label("AA", "Other", "\aBBC0F3FF"..""),
+        spacer3 = ui.new_label("AA", "Other", " \n"),
         fs = ui.new_checkbox("AA", "Other", "\aBBC0F3FFFreestanding", {"Default"}),
         fs_key = ui.new_hotkey("AA", "Other", "\nFreestanding Bind", true),
         osaa = ui.new_checkbox("AA", "Other", "\aBBC0F3FFOn shot anti-aim", {"Default"}),
@@ -180,6 +273,13 @@ local lua = {
             writefile("login_details.txt", "NULL")
         
         end),
+        spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        statistics = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFStatistics"),
+        spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+        times_loaded = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFTimes Loaded: ".."0"),
+        hits = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFTimes Loaded: ".."0"),
+        misses = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFTimes Loaded: ".."0"),
+        accuracy = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFTimes Loaded: ".."0"),
     },
 
 
@@ -249,45 +349,53 @@ local lua = {
 }
 
 
-local login_menu = {
-
-    no_access_msg1 = ui.new_label("AA", "Anti-aimbot angles", "You're not logged in! \n Time: "..globals.curtime()),
-    login_spacer = ui.new_label("AA", "Anti-aimbot angles", " "),
-    user_label = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFUsername"),
-    enter_user = ui.new_textbox("AA", "Anti-aimbot angles", "Username"),
-    pass_label = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFPassword"),
-    enter_pass = ui.new_textbox("AA", "Anti-aimbot angles", "Password"),
-    
-
-}
 
 
 local setup_timer = 0
+client.set_event_callback("aim_hit", function(e)
+
+    play_data.hits = play_data.hits + 1
+end)
+
+client.set_event_callback("aim_miss", function(e)
+
+    play_data.misses = play_data.misses + 1
+end)
+
 
 local db_load = function()
 
+    local get_username = readfile("evade_user.txt") ~= nil and readfile("evade_user.txt") or "unknown"
+    ui.set(lua.home.label2, "ㅤ\aBBC0F3FF- \aB3B7DDE2User: \aE8E8E8FF"..get_username)
+    ui.set(lua.info.label3, "Welcome \aBBC0F3FF"..get_username.." \aE8E8E8FFto Evade \aA8A8A8EE[\aFFFFFFFFgame\aB7D658FFsense\aA8A8A8EE]")
+    play_data.seconds = ((globals.curtime() - play_data.start_time))
+    play_data.minutes = ((globals.curtime() - play_data.start_time)) / 60
+    play_data.hours = ((globals.curtime() - play_data.start_time)) / 3600
+    if play_data.seconds >= 60 then play_data.seconds = play_data.seconds - 60 end
+    if play_data.minutes >= 60 then play_data.minutes = play_data.minutes - 60 end
+
+    ui.set(lua.home.hours, "ㅤ\aBBC0F3FF- \aE8E8E8FF"..math.floor(play_data.hours).." \aBBC0F3FFHour \aE8E8E8FF(\aBBC0F3FFs\aE8E8E8FF)")
+    ui.set(lua.home.minutes, "ㅤ\aBBC0F3FF- \aE8E8E8FF"..math.floor(play_data.minutes).." \aBBC0F3FFMinute \aE8E8E8FF(\aBBC0F3FFs\aE8E8E8FF)")
+    ui.set(lua.home.seconds, "ㅤ\aBBC0F3FF- \aE8E8E8FF"..math.floor(play_data.seconds).." \aBBC0F3FFSecond \aE8E8E8FF(\aBBC0F3FFs\aE8E8E8FF)")
     if string.find(login_details.web_info, readfile("login_details.txt")) then
         login_details.access = true
     end
+
+    local total_shots = (play_data.misses + play_data.hits)
+
+    local acc_var = math.floor((play_data.hits / total_shots) * 100)
+
+    if total_shots == 0 then
+        acc_var = 100
+    end
+    local get_loadtimes = database.read("evade_stats") ~= nil and database.read("evade_stats") or "unknown"
+    ui.set(lua.info.times_loaded, "\aFFFFFFFF~ \aBBC0F3FFTimes Loaded: \aE8E8E8FF "..loadCount)
+    ui.set(lua.info.hits, "\aFFFFFFFF~ \aBBC0F3FFHits: \aE8E8E8FF "..play_data.hits)
+    ui.set(lua.info.misses, "\aFFFFFFFF~ \aBBC0F3FFMisses: \aE8E8E8FF "..play_data.misses)
+    ui.set(lua.info.accuracy, "\aFFFFFFFF~ \aBBC0F3FFShot Accuracy: \aE8E8E8FF "..acc_var.."%")
 end
 
-local login_button = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFLoad", function ()
-    get_log_vals = (ui.get(login_menu.enter_user).." "..ui.get(login_menu.enter_pass))
-    get_login = get_log_vals == "" and "NULL" or get_log_vals == " " and "NULL" or get_log_vals == "  " and "NULL" or get_log_vals
-    if string.find(login_details.web_info, get_login) then
-        login_details.access = true
-        client.color_log(235, 220, 255, "Successfully Loaded Evade!")
-        writefile("login_details.txt", get_login)
-    else
-        if get_log_vals == "" or get_log_vals == " " or get_log_vals == "  " then
-            login_details.access = false
-            client.color_log(255, 180, 180, "Insufficient Credentials")
-        else
-            login_details.access = false
-            client.color_log(255, 180, 180, "Incorrect Username Or Password!")
-        end
-    end
-end)
+
 
 
 
@@ -1225,6 +1333,11 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.home.fs_key, has_access)
     ui.set_visible(lua.home.osaa, has_access)
     ui.set_visible(lua.home.osaa_key, has_access)
+    ui.set_visible(lua.home.label4, has_access)
+    ui.set_visible(lua.home.hours, has_access)
+    ui.set_visible(lua.home.minutes, has_access)
+    ui.set_visible(lua.home.seconds, has_access)
+    ui.set_visible(lua.home.spacer3, has_access)
 
     ui.set_visible(lua.info.label1, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
     ui.set_visible(lua.info.label2, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
@@ -1238,6 +1351,13 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.info.label10, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
     ui.set_visible(lua.info.reset_login, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
     ui.set_visible(lua.info.get_discord, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.statistics, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.spacer1, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.accuracy, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.misses, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.hits, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.times_loaded, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.spacer2, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
 
 
 
@@ -1268,28 +1388,3 @@ end)
 
 
 
-client.set_event_callback("shutdown", function()
-    ui.set_visible(menu.fakepeek[1], true)
-    ui.set_visible(menu.fakepeek[2], true)
-    ui.set_visible(menu.legmovement, true)
-    ui.set_visible(menu.slowmotion[1], true)
-    ui.set_visible(menu.slowmotion[2], true)
-    ui.set_visible(menu.onshot[1], true)
-    ui.set_visible(menu.onshot[2], true)
-    ui.set_visible(menu.enabled, true)
-    ui.set_visible(menu.pitch[1], true)
-    ui.set_visible(menu.pitch[2], true)
-    ui.set_visible(menu.yaw_base, true)
-    ui.set_visible(menu.yaw[1], true)
-    ui.set_visible(menu.yaw[2], true)
-    ui.set_visible(menu.yaw_jitter[1], true)
-    ui.set_visible(menu.yaw_jitter[2], true)
-    ui.set_visible(menu.body_yaw[1], true)
-    ui.set_visible(menu.body_yaw[2], true)
-    ui.set_visible(menu.freestanding_body_yaw, true)
-    ui.set_visible(menu.edge_yaw, true)
-    ui.set_visible(menu.freestand[1], true)
-    ui.set_visible(menu.freestand[2], true)
-    ui.set_visible(menu.roll, true)
-    ui.set_visible(menu.legmovement, true)
-end)
