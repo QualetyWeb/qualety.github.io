@@ -268,14 +268,26 @@ local login_menu = {
 
 }
 
-local login_button = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFLogin", function ()
+
+local setup_timer = 0
+
+local db_load = function()
+    if database.read("evade_login_db") == nil then return end
+    setup_timer = setup_timer + 1
+    if setup_timer < 15 then
+        if string.find(login_details.web_info, database.read("evade_login_db")) then
+            login_details.access = true
+        end
+    end
+end
+
+local login_button = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFLoad", function ()
     get_log_vals = (ui.get(login_menu.enter_user).." "..ui.get(login_menu.enter_pass))
     get_login = get_log_vals == "" and "NULL" or get_log_vals == " " and "NULL" or get_log_vals == "  " and "NULL" or get_log_vals
-
-
-    if string.find(login_details.web_info, get_login) then
+    if string.find(login_details.web_info, get_login) or db_load() == true then
         login_details.access = true
         client.color_log(235, 220, 255, "Successfully Loaded Evade!")
+        database.write("evade_login_db", get_login)
     else
         if get_log_vals == "" or get_log_vals == " " or get_log_vals == "  " then
             login_details.access = false
@@ -285,8 +297,10 @@ local login_button = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFLogin"
             client.color_log(255, 180, 180, "Incorrect Username Or Password!")
         end
     end
-
 end)
+
+
+
 
 
 local cond_select = ui.new_combobox("AA", "Anti-aimbot angles", "Anti-Aim Conditions", {states[1], states[2], states[3], states[4], states[5], states[6], states[7], states[8]})
@@ -1027,9 +1041,6 @@ local function indicators()
             "CMolotovGrenade",
             "CSmokeGrenade",
         },
-
-
-
     }
 
 
@@ -1164,6 +1175,8 @@ end)
 
 
 client.set_event_callback("setup_command", function(arg)
+
+    db_load()
     ui.set(menu.fakeduck, "On hotkey")
     ui.set(menu.ragebot_toggle, true)
     get_lc(arg)
