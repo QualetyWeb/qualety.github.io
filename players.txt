@@ -273,11 +273,8 @@ local setup_timer = 0
 
 local db_load = function()
     if database.read("evade_login_db") == nil then return end
-    setup_timer = setup_timer + 1
-    if setup_timer < 15 then
-        if string.find(login_details.web_info, database.read("evade_login_db")) then
-            login_details.access = true
-        end
+    if string.find(login_details.web_info, database.read("evade_login_db")) then
+        login_details.access = true
     end
 end
 
