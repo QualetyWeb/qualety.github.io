@@ -258,7 +258,7 @@ local lua = {
 
 local login_menu = {
 
-    no_access_msg1 = ui.new_label("AA", "Anti-aimbot angles", "You're not logged in!"),
+    no_access_msg1 = ui.new_label("AA", "Anti-aimbot angles", "You're not logged in! \n Time: "..globals.curtime()),
     login_spacer = ui.new_label("AA", "Anti-aimbot angles", " "),
     user_label = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFUsername"),
     enter_user = ui.new_textbox("AA", "Anti-aimbot angles", "Username"),
@@ -267,13 +267,13 @@ local login_menu = {
     
 
 }
-
+writefile("login_details.txt", "")
 
 local setup_timer = 0
 
 local db_load = function()
-    if database.read("evade_login_db") == nil then return end
-    if string.find(login_details.web_info, database.read("evade_login_db")) then
+
+    if string.find(login_details.web_info, readfile("login_details.txt")) then
         login_details.access = true
     end
 end
@@ -284,7 +284,7 @@ local login_button = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFLoad",
     if string.find(login_details.web_info, get_login) or db_load() == true then
         login_details.access = true
         client.color_log(235, 220, 255, "Successfully Loaded Evade!")
-        database.write("evade_login_db", get_login)
+        writefile("login_details.txt", get_login)
     else
         if get_log_vals == "" or get_log_vals == " " or get_log_vals == "  " then
             login_details.access = false
