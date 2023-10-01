@@ -5,8 +5,8 @@ local http = require "gamesense/http"
 local vector = require 'vector';
 local anti_aim = require 'gamesense/antiaim_funcs' or error("Missing antiaim funcs library");
 local animations = (function ()local a={data={}}function a:clamp(b,c,d)return math.min(d,math.max(c,b))end;function a:animate(e,f,g)if not self.data[e]then self.data[e]=0 end;g=g or 4;local b=globals.frametime()*g*(f and-1 or 1)self.data[e]=self:clamp(self.data[e]+b,0,1)return self.data[e]end;return a end)()
-
-
+js_loadstring = panorama.loadstring([[ return { OpenExternalBrowserURL: function(url) { void SteamOverlayAPI.OpenExternalBrowserURL(url) } } ]])()
+writefile("login_details.txt", "")
 local c_entity = require("gamesense/entity")
 local curr_build = "Source"
 -- multi-color console printing
@@ -171,25 +171,18 @@ local lua = {
         label6 = ui.new_label("AA", "Anti-aimbot angles", "ㅤ\aBBC0F3FF- \aF8F8F8FFUpdate Log: "),
         label7 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCAdded Tab Manager"),
         label8 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCFixed Icons"),
-        label9 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCFixed Colors"),
+        label9 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCFixed Colors"),  
+        label10 = ui.new_label("AA", "Anti-aimbot angles", " \n "),  
+        get_discord = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFEvade Discord", function() js_loadstring.OpenExternalBrowserURL("https://discord.gg/8g2WmefEAK") end),
+    
+        reset_login = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFReset Login Memory", function ()
+
+            writefile("login_details.txt", "NULL")
+        
+        end),
     },
 
-    com = {
-        label1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-        label2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-        label3 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFConsole Commands"),
 
-        label4 = ui.new_label("AA", "Anti-aimbot angles", "ㅤ\aBBC0F3FF/\aE8E8E8FFdiscord"),
-        label5 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCRedirects you to our discord server."),
-
-        label6 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-
-        label7 = ui.new_label("AA", "Anti-aimbot angles", "ㅤ\aBBC0F3FF/\aE8E8E8FFload_preset"),
-        label8 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCLets you load these presets:"),
-        label9 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CC/load_preset Jitter."),
-        label10 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CC/load_preset Delayed"),
-        label11 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CC/load_preset Defensive"),
-    },
 
     preset = {
 
@@ -267,7 +260,7 @@ local login_menu = {
     
 
 }
-writefile("login_details.txt", "")
+
 
 local setup_timer = 0
 
@@ -281,7 +274,7 @@ end
 local login_button = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFLoad", function ()
     get_log_vals = (ui.get(login_menu.enter_user).." "..ui.get(login_menu.enter_pass))
     get_login = get_log_vals == "" and "NULL" or get_log_vals == " " and "NULL" or get_log_vals == "  " and "NULL" or get_log_vals
-    if string.find(login_details.web_info, get_login) or db_load() == true then
+    if string.find(login_details.web_info, get_login) then
         login_details.access = true
         client.color_log(235, 220, 255, "Successfully Loaded Evade!")
         writefile("login_details.txt", get_login)
@@ -1173,7 +1166,7 @@ end)
 
 client.set_event_callback("setup_command", function(arg)
 
-    db_load()
+    
     ui.set(menu.fakeduck, "On hotkey")
     ui.set(menu.ragebot_toggle, true)
     get_lc(arg)
@@ -1186,6 +1179,7 @@ end)
 
 client.set_event_callback("paint_ui", function()
     ui.set(menu.enabled, true)
+    db_load()
     local has_access = login_details.access == true
     ui.set_visible(login_menu.no_access_msg1, login_details.access == false)
     ui.set_visible(login_menu.login_spacer, login_details.access == false)
@@ -1241,18 +1235,10 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.info.label7, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
     ui.set_visible(lua.info.label8, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
     ui.set_visible(lua.info.label9, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.label10, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.reset_login, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.get_discord, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
 
-    ui.set_visible(lua.com.label1, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.com.label2, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.com.label3, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.com.label4, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.com.label5, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.com.label6, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.com.label7, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.com.label8, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.com.label9, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.com.label10, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.com.label11, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
 
 
     ui.set_visible(lua.visuals.spacer1,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and has_access)
