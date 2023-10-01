@@ -269,15 +269,21 @@ local login_menu = {
 }
 
 local login_button = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFLogin", function ()
-    
-    get_login = (ui.get(login_menu.enter_user).." "..ui.get(login_menu.enter_pass))
+    get_log_vals = (ui.get(login_menu.enter_user).." "..ui.get(login_menu.enter_pass))
+    get_login = get_log_vals == "" and "NULL" or get_log_vals == " " and "NULL" or get_log_vals == "  " and "NULL" or get_log_vals
+
 
     if string.find(login_details.web_info, get_login) then
         login_details.access = true
         client.color_log(235, 220, 255, "Successfully Loaded Evade!")
     else
-        login_details.access = false
-        client.color_log(255, 180, 180, "Incorrect Username Or Password!")
+        if get_log_vals == "" or get_log_vals == " " or get_log_vals == "  " then
+            login_details.access = false
+            client.color_log(255, 180, 180, "Insufficient Credentials")
+        else
+            login_details.access = false
+            client.color_log(255, 180, 180, "Incorrect Username Or Password!")
+        end
     end
 
 end)
