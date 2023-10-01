@@ -1,8 +1,7 @@
 
 local ffi = require 'ffi';
-
 local bit = require 'bit';
-
+local http = require "gamesense/http"
 local vector = require 'vector';
 local anti_aim = require 'gamesense/antiaim_funcs' or error("Missing antiaim funcs library");
 local animations = (function ()local a={data={}}function a:clamp(b,c,d)return math.min(d,math.max(c,b))end;function a:animate(e,f,g)if not self.data[e]then self.data[e]=0 end;g=g or 4;local b=globals.frametime()*g*(f and-1 or 1)self.data[e]=self:clamp(self.data[e]+b,0,1)return self.data[e]end;return a end)()
@@ -10,6 +9,42 @@ local animations = (function ()local a={data={}}function a:clamp(b,c,d)return ma
 
 local c_entity = require("gamesense/entity")
 local curr_build = "Source"
+-- multi-color console printing
+
+local login_details = {
+    login = "NULL",
+    access = false,
+    web_info = ""
+
+}
+
+
+client.color_log(240, 220, 255, "\n\n\n\n   Welcome to the evade loader!")
+client.color_log(190, 190, 190, "   To Inject Evade Use The Command Below")
+client.color_log(220, 220, 220, "   /login [Username] [Password] \n\n NOTE: To get your login you must make a ticket in the discord")
+
+client.set_event_callback("console_input", function(text)
+    if not string.find(text, "/login") then return end
+    local string_len = string.len(text)
+    login_details.login = string.sub(text, 8, string_len)
+end)
+
+http.get("https://raw.githubusercontent.com/QualetyWeb/qualety.github.io/main/usernames.txt", function(s, r)
+    if not s or r.status ~= 200 then
+        return
+    end
+    login_details.web_info = r.body
+    
+end)
+
+local get_access = function()
+    if string.find(login_details.web_info, login_details.login) then
+        return true
+    else
+        return false
+    end
+end
+
 
 -- PREDICT DEBUGGING
 require( "vector3" );
@@ -121,7 +156,7 @@ local aa_type = ui.new_combobox("AA", "Anti-aimbot angles", "Anti-Aim Type", {"N
 
 local lua = {
     main_switch = ui.new_checkbox("AA", "Other", "\aE8E8E8FFEnable \aBBC0F3FFEvade\aE8E8E8FF.lua"),
-
+   
 
     home = {
         label1 = ui.new_label("AA", "Other", " \n"),
@@ -264,65 +299,67 @@ end
 
 local function fix_antiaim_visibility()
 
+    local has_access = get_access() == true
+    ui.set_visible(lua.main_switch, has_access)
     local when_builder = ui.get(lua.main_switch) and ui.get(aa_type) == "Builder" and ui.get(aa_tabs) == "Anti-Aimbot"
     local when_preset = ui.get(lua.main_switch) and ui.get(aa_type) == "Presets" and ui.get(aa_tabs) == "Anti-Aimbot"
-    ui.set_visible(lua.preset.label1, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset)
-    ui.set_visible(lua.preset.spacer1, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset)
-    ui.set_visible(lua.preset.pre_type, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset)
+    ui.set_visible(lua.preset.label1, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset and has_access)
+    ui.set_visible(lua.preset.spacer1, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset and has_access)
+    ui.set_visible(lua.preset.pre_type, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset and has_access)
 
 
-    ui.set_visible(aa_tabs, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(lua.main_switch))
-    ui.set_visible(aa_type, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(lua.main_switch) and ui.get(aa_tabs) == "Anti-Aimbot")
-    ui.set_visible(cond_select, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(lua.main_switch) and ui.get(aa_type) == "Builder")
+    ui.set_visible(aa_tabs, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(lua.main_switch) and has_access)
+    ui.set_visible(aa_type, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(lua.main_switch) and ui.get(aa_tabs) == "Anti-Aimbot" and has_access)
+    ui.set_visible(cond_select, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(lua.main_switch) and ui.get(aa_type) == "Builder" and has_access)
     for i = 1, #states do
         local show_rad = ui.get(antiaim[i].body_movement) ~= "Default"
         local show_delay = ui.get(antiaim[i].body_movement) == "Slow" or ui.get(antiaim[i].body_movement) == "Evade"
-        ui.set_visible(antiaim[i].ovr_state, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].spacer1, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].label1, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].body_movement, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].spacer2, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].b_yaw, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].b_rad, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and show_rad)
-        ui.set_visible(antiaim[i].b_delay, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and show_delay)
+        ui.set_visible(antiaim[i].ovr_state, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].spacer1, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].label1, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].body_movement, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].spacer2, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].b_yaw, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].b_rad, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and show_rad and has_access)
+        ui.set_visible(antiaim[i].b_delay, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and show_delay and has_access)
 
-        ui.set_visible(antiaim[i].spacer3, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].label2, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].spacer4, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].jitter_type, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].j_rad, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and ui.get(antiaim[i].jitter_type) ~= "Off")
+        ui.set_visible(antiaim[i].spacer3, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].label2, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].spacer4, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].jitter_type, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].j_rad, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and ui.get(antiaim[i].jitter_type) ~= "Off" and has_access)
 
-        ui.set_visible(antiaim[i].force_def, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].spacer7, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].desync_type, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].spacer6, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].label3, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
-        ui.set_visible(antiaim[i].spacer5, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder)
+        ui.set_visible(antiaim[i].force_def, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].spacer7, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].desync_type, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].spacer6, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].label3, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].spacer5, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
 
 
-        ui.set_visible(lua.def.toggle, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.spacer1, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.def_conds, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.spacer2, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.label1, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.spacer3, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.yaw_type, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.yaw, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.radius, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and ui.get(lua.def.yaw_type) ~= "Spin" and ui.get(lua.def.yaw_type) ~= "Static")
-        ui.set_visible(lua.def.delay, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and ui.get(lua.def.yaw_type) ~= "Jitter" and ui.get(lua.def.yaw_type) ~= "Static")
-        ui.set_visible(lua.def.spin_radius, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and ui.get(lua.def.yaw_type) == "Spin")
-        ui.set_visible(lua.def.spin_direction, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and ui.get(lua.def.yaw_type) == "Spin")
-        ui.set_visible(lua.def.spacer3, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.label2, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.spacer4, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.variation, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.flick_rate, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.start_degree, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.toggle, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.spacer1, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.def_conds, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.spacer2, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.label1, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.spacer3, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.yaw_type, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.yaw, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.radius, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and ui.get(lua.def.yaw_type) ~= "Spin" and ui.get(lua.def.yaw_type) ~= "Static" and has_access)
+        ui.set_visible(lua.def.delay, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and ui.get(lua.def.yaw_type) ~= "Jitter" and ui.get(lua.def.yaw_type) ~= "Static" and has_access)
+        ui.set_visible(lua.def.spin_radius, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and ui.get(lua.def.yaw_type) == "Spin" and has_access)
+        ui.set_visible(lua.def.spin_direction, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and ui.get(lua.def.yaw_type) == "Spin" and has_access)
+        ui.set_visible(lua.def.spacer3, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.label2, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.spacer4, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.variation, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.flick_rate, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.start_degree, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
 
-        ui.set_visible(lua.def.spacer5, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.label3, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.spacer6, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
-        ui.set_visible(lua.def.pause_time, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch))
+        ui.set_visible(lua.def.spacer5, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.label3, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.spacer6, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
+        ui.set_visible(lua.def.pause_time, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.main_switch) and has_access)
 
 
         ui.set_visible(antiaim[1].ovr_state, false)
@@ -1115,10 +1152,12 @@ client.set_event_callback("setup_command", function(arg)
     disablers()
 end)
 
-
-
+local no_access_msg1 = ui.new_label("AA", "Anti-aimbot angles", "You're not logged in!")
+local no_access_msg2 = ui.new_label("AA", "Anti-aimbot angles", "Login using /login [User] [Pass] in console!")
 client.set_event_callback("paint_ui", function()
-
+    local has_access = get_access() == true
+    ui.set_visible(no_access_msg1, get_access() == false)
+    ui.set_visible(no_access_msg2, get_access() == false)
     indicators()
 
     fix_antiaim_visibility()
@@ -1127,7 +1166,7 @@ client.set_event_callback("paint_ui", function()
     else
         ui.set(menu.enabled, false)
     end
-    
+
     ui.set_visible(menu.fakepeek[1], false);
     ui.set_visible(menu.fakepeek[2], false);
     ui.set_visible(menu.legmovement, false);
@@ -1152,56 +1191,56 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(menu.roll, false);
     ui.set_visible(menu.fakelag_limit, true);
 
-    ui.set_visible(lua.home.label1, ui.get(lua.main_switch))
-    ui.set_visible(lua.home.manager, ui.get(lua.main_switch))
-    ui.set_visible(lua.home.label2, ui.get(lua.main_switch))
-    ui.set_visible(lua.home.label3, ui.get(lua.main_switch))
-    ui.set_visible(lua.home.fs, ui.get(lua.main_switch))
-    ui.set_visible(lua.home.fs_key, ui.get(lua.main_switch))
-    ui.set_visible(lua.home.osaa, ui.get(lua.main_switch))
-    ui.set_visible(lua.home.osaa_key, ui.get(lua.main_switch))
+    ui.set_visible(lua.home.label1, ui.get(lua.main_switch) and has_access)
+    ui.set_visible(lua.home.manager, ui.get(lua.main_switch) and has_access)
+    ui.set_visible(lua.home.label2, ui.get(lua.main_switch) and has_access)
+    ui.set_visible(lua.home.label3, ui.get(lua.main_switch) and has_access)
+    ui.set_visible(lua.home.fs, ui.get(lua.main_switch) and has_access)
+    ui.set_visible(lua.home.fs_key, ui.get(lua.main_switch) and has_access)
+    ui.set_visible(lua.home.osaa, ui.get(lua.main_switch) and has_access)
+    ui.set_visible(lua.home.osaa_key, ui.get(lua.main_switch) and has_access)
 
-    ui.set_visible(lua.info.label1, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.info.label2, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.info.label3, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.info.label4, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.info.label5, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.info.label6, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.info.label7, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.info.label8, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.info.label9, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.info.label1, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.label2, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.label3, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.label4, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.label5, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.label6, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.label7, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.label8, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.label9, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
 
-    ui.set_visible(lua.com.label1, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.com.label2, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.com.label3, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.com.label4, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.com.label5, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.com.label6, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.com.label7, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.com.label8, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.com.label9, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.com.label10, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
-    ui.set_visible(lua.com.label11, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo")
+    ui.set_visible(lua.com.label1, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.com.label2, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.com.label3, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.com.label4, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.com.label5, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.com.label6, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.com.label7, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.com.label8, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.com.label9, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.com.label10, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.com.label11, ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
 
 
-    ui.set_visible(lua.visuals.spacer1,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
-    ui.set_visible(lua.visuals.spacer2,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
-    ui.set_visible(lua.visuals.spacer3,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
-    ui.set_visible(lua.visuals.spacer4,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
-    ui.set_visible(lua.visuals.spacer5,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
-    ui.set_visible(lua.visuals.spacer6,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
+    ui.set_visible(lua.visuals.spacer1,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and has_access)
+    ui.set_visible(lua.visuals.spacer2,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and has_access)
+    ui.set_visible(lua.visuals.spacer3,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and has_access)
+    ui.set_visible(lua.visuals.spacer4,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and has_access)
+    ui.set_visible(lua.visuals.spacer5,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and has_access)
+    ui.set_visible(lua.visuals.spacer6,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and has_access)
 
 
     ui.set_visible(lua.visuals.toggle,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
-    ui.set_visible(lua.visuals.label1,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
-    ui.set_visible(lua.visuals.label2,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
-    ui.set_visible(lua.visuals.label3,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
-    ui.set_visible(lua.visuals.colpick1,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
-    ui.set_visible(lua.visuals.colpick2,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
-    ui.set_visible(lua.visuals.colpick3,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
-    ui.set_visible(lua.visuals.crosshair,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
-    ui.set_visible(lua.visuals.other,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
-    ui.set_visible(lua.visuals.logs,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle))
+    ui.set_visible(lua.visuals.label1,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
+    ui.set_visible(lua.visuals.label2,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
+    ui.set_visible(lua.visuals.label3,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
+    ui.set_visible(lua.visuals.colpick1,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
+    ui.set_visible(lua.visuals.colpick2,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
+    ui.set_visible(lua.visuals.colpick3,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
+    ui.set_visible(lua.visuals.crosshair,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
+    ui.set_visible(lua.visuals.other,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
+    ui.set_visible(lua.visuals.logs,ui.get(lua.main_switch) and ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
 
 
 
