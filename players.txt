@@ -1,12 +1,12 @@
 
 local ffi = require 'ffi';
 local bit = require 'bit';
-local http = require "gamesense/http"
-local vector = require 'vector';
+local http = require "gamesense/http" or error("Missing Http library");
+local vector = require 'vector' or error("Missing Vector library");
 local anti_aim = require 'gamesense/antiaim_funcs' or error("Missing antiaim funcs library");
 local animations = (function ()local a={data={}}function a:clamp(b,c,d)return math.min(d,math.max(c,b))end;function a:animate(e,f,g)if not self.data[e]then self.data[e]=0 end;g=g or 4;local b=globals.frametime()*g*(f and-1 or 1)self.data[e]=self:clamp(self.data[e]+b,0,1)return self.data[e]end;return a end)()
 js_loadstring = panorama.loadstring([[ return { OpenExternalBrowserURL: function(url) { void SteamOverlayAPI.OpenExternalBrowserURL(url) } } ]])()
-writefile("login_details.txt", "")
+writefile("login_details.txt", "NULL")
 writefile("evade_user.txt", "")
 
 local function incrementLoadCount()
@@ -22,7 +22,7 @@ local function incrementLoadCount()
 end
 local loadCount = incrementLoadCount()
 
-local c_entity = require("gamesense/entity")
+local c_entity = require("gamesense/entity") or error("Missing Entity library library");
 local curr_build = "Source"
 -- multi-color console printing
 
@@ -371,7 +371,7 @@ local db_load = function()
     play_data.seconds = ((globals.curtime() - play_data.start_time))
     play_data.minutes = ((globals.curtime() - play_data.start_time)) / 60
     play_data.hours = ((globals.curtime() - play_data.start_time)) / 3600
-    if play_data.seconds >= 60 then play_data.seconds = play_data.seconds - 60 end
+    if play_data.seconds > 60 then play_data.seconds = play_data.seconds - 60 end
     if play_data.minutes >= 60 then play_data.minutes = play_data.minutes - 60 end
 
     ui.set(lua.home.hours, "ㅤ\aBBC0F3FF- \aE8E8E8FF"..math.floor(play_data.hours).." \aBBC0F3FFHour \aE8E8E8FF(\aBBC0F3FFs\aE8E8E8FF)")
