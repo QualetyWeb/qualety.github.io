@@ -6,7 +6,7 @@ local vector = require 'vector' or error("Missing Vector library");
 local anti_aim = require 'gamesense/antiaim_funcs' or error("Missing antiaim funcs library");
 local animations = (function ()local a={data={}}function a:clamp(b,c,d)return math.min(d,math.max(c,b))end;function a:animate(e,f,g)if not self.data[e]then self.data[e]=0 end;g=g or 4;local b=globals.frametime()*g*(f and-1 or 1)self.data[e]=self:clamp(self.data[e]+b,0,1)return self.data[e]end;return a end)()
 js_loadstring = panorama.loadstring([[ return { OpenExternalBrowserURL: function(url) { void SteamOverlayAPI.OpenExternalBrowserURL(url) } } ]])()
-writefile("login_details.txt", "NULL")
+writefile("login_details.txt", "")
 writefile("evade_user.txt", "")
 
 local function incrementLoadCount()
@@ -377,9 +377,8 @@ local db_load = function()
     ui.set(lua.home.hours, "ㅤ\aBBC0F3FF- \aE8E8E8FF"..math.floor(play_data.hours).." \aBBC0F3FFHour \aE8E8E8FF(\aBBC0F3FFs\aE8E8E8FF)")
     ui.set(lua.home.minutes, "ㅤ\aBBC0F3FF- \aE8E8E8FF"..math.floor(play_data.minutes).." \aBBC0F3FFMinute \aE8E8E8FF(\aBBC0F3FFs\aE8E8E8FF)")
     ui.set(lua.home.seconds, "ㅤ\aBBC0F3FF- \aE8E8E8FF"..math.floor(play_data.seconds).." \aBBC0F3FFSecond \aE8E8E8FF(\aBBC0F3FFs\aE8E8E8FF)")
-    if string.find(login_details.web_info, readfile("login_details.txt")) then
-        login_details.access = true
-    end
+
+
 
     local total_shots = (play_data.misses + play_data.hits)
 
@@ -395,7 +394,14 @@ local db_load = function()
     ui.set(lua.info.accuracy, "\aFFFFFFFF~ \aBBC0F3FFShot Accuracy: \aE8E8E8FF "..acc_var.."%")
 end
 
+local on_load = function()
 
+
+    if not readfile("login_details.txt") then return end
+    if string.find(login_details.web_info, readfile("login_details.txt")) then
+        login_details.access = true
+    end
+end
 
 
 
@@ -1287,6 +1293,7 @@ end)
 
 client.set_event_callback("paint_ui", function()
     ui.set(menu.enabled, true)
+    on_load()
     db_load()
     local has_access = login_details.access == true
     ui.set_visible(login_menu.no_access_msg1, login_details.access == false)
