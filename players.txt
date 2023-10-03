@@ -567,6 +567,7 @@ local def_vars = {
     latest_duck = 0,
     current_mag_amount = 0,
     correct_mag_timer = 0,
+    jitter_switch = false,
 
     defensive = {
         cmd = 0,
@@ -1045,7 +1046,14 @@ local function defensive_logic(arg)
                     ui.set(menu.body_yaw[2], 1)
 
                 elseif ui.get(lua.def.yaw_type) == "Slow Jitter" then
-                    ui.set(menu.body_yaw[1], "Static")
+                    if globals.tickcount() % ui.get(lua.def.delay) == 1 then
+                        def_vars.jitter_switch = not def_vars.jitter_switch
+                    end
+                    ui.set(menu.yaw[2], def_vars.jitter_switch and (ui.get(lua.def.radius) / -1 + ui.get(lua.def.yaw)) or (ui.get(lua.def.radius) / 1 + ui.get(lua.def.yaw)))
+                    
+                    ui.set(menu.body_yaw[1], "Opposite")
+                    --[[
+
                     if slow_yaw_var >= 15 then
                         ui.set(menu.body_yaw[2], -60)
                         ui.set(menu.yaw[2], (ui.get(lua.def.radius) / -1 + ui.get(lua.def.yaw)))
@@ -1053,12 +1061,17 @@ local function defensive_logic(arg)
                         ui.set(menu.body_yaw[2], 60)
                         ui.set(menu.yaw[2], (ui.get(lua.def.radius) / 1 + ui.get(lua.def.yaw)))
                     end
+
+                    ]]
+
                     ui.set(menu.yaw_jitter[2], 0)
                 elseif ui.get(lua.def.yaw_type) == "Spin" then
-                    ui.set(menu.yaw[2], yaw_val + def_vars.base)
-                    ui.set(menu.yaw_jitter[2], 0)
-                    ui.set(menu.body_yaw[1], "Static")
-                    ui.set(menu.body_yaw[2], 50)
+                    if isDefensive then
+                        ui.set(menu.yaw[2], yaw_val + def_vars.base)
+                        ui.set(menu.yaw_jitter[2], 0)
+                        ui.set(menu.body_yaw[1], "Static")
+                        ui.set(menu.body_yaw[2], 50)
+                    end
                 end
 
                 for i = 1, #pitch_str do
@@ -1086,9 +1099,11 @@ local function defensive_logic(arg)
                             ui.set(menu.pitch[2], -89 + def_vars.pitch_variation)
                         end
                     else
-                        if exp_switch == false and ui.get(lua.def.flick_rate) ~= 0 then
-                            ui.set(menu.pitch[1], "Custom")
-                            ui.set(menu.pitch[2], -89 + def_vars.pitch_variation)
+                        if isDefensive then
+                            if exp_switch == false and ui.get(lua.def.flick_rate) ~= 0 then
+                                ui.set(menu.pitch[1], "Custom")
+                                ui.set(menu.pitch[2], -89 + def_vars.pitch_variation)
+                            end
                         end
                     end
                     
