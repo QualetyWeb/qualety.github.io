@@ -584,27 +584,63 @@ end
 local time_to_ticks = function(t)
     return math.floor(t / globals.tickinterval() + 0.5)
 end
+local func = {
 
-doubletap_charged = function ()
-    return anti_aim.get_double_tap()
-end
+    _2hex = function(redArg, greenArg, blueArg, alphaArg)
+        return string.format('%.2x%.2x%.2x%.2x', redArg, greenArg, blueArg, alphaArg)
+    end,
 
-get_desync = function ()
-    return anti_aim.get_desync(1)
-end
+    _isDT = function ()
+        return anti_aim.get_double_tap()
+    end,
 
-get_delta = function ()
-    local localplayer = entity.get_local_player()
-    if not localplayer then
-        return ""
+    _dsy = function ()
+        return anti_aim.get_desync(1)
+    end,
+
+    _delta = function ()
+        local localplayer = entity.get_local_player()
+        if not localplayer then
+            return ""
+        end
+        return entity.get_prop(localplayer, "m_flPoseParameter", 11) * 120 - 60
+    end,
+
+    _ground = function ()
+        local localplayer = entity.get_local_player();
+        local flags = entity.get_prop(localplayer, 'm_fFlags');
+    end,
+
+    
+
+}
+
+
+
+
+
+
+local nade_alpha = 0
+local animate_text = function(time, string, r, g, b, a)
+    local t_out, t_out_iter = { }, 1
+
+    local l = string:len( ) - 1
+
+    local r_add = (255 - r)
+    local g_add = (255 - g)
+    local b_add = (255 - b)
+    local a_add = (195 - a)
+
+    for i = 1, #string do
+        local iter = (i - 1)/(#string - 1) + time
+        t_out[t_out_iter] = "\a" .. func._2hex( r + r_add * math.abs(math.cos( iter )), g + g_add * math.abs(math.cos( iter )), b + b_add * math.abs(math.cos( iter )), (a  - nade_alpha) + a_add * math.abs(math.cos( iter )) )
+
+        t_out[t_out_iter + 1] = string:sub( i, i )
+
+        t_out_iter = t_out_iter + 2
     end
-    return entity.get_prop(localplayer, "m_flPoseParameter", 11) * 120 - 60
-end
 
-get_ground_state = function ()
-    local localplayer = entity.get_local_player();
-    local flags = entity.get_prop(localplayer, 'm_fFlags');
-
+    return t_out
 end
 
 
@@ -657,6 +693,7 @@ local function func_timer()
     end
 
 end
+
 
 local function on_shot()
     local lp = entity.get_local_player()
@@ -847,25 +884,21 @@ local function presets(arg)
     elseif ui.get(lua.preset.pre_type) == "Delayed" then
         arg.force_defensive = false
 
-        if arg.chokedcommands == 1 then
-            lp_choke = lp_choke + 1 * pre.multiplier
+        if globals.tickcount() % 6 == 1 then
+            def_vars.jitter_switch = not def_vars.jitter_switch
         end
-
-        if lp_choke > 30 then
-            lp_choke = 0
-        end
-
-        if lp_choke > 15 then
-            ui.set(menu.yaw[2], -21)
-            ui.set(menu.body_yaw[2], -180)
+        if def_vars.jitter_switch then
+            ui.set(menu.yaw[2], -13)
+            
         else
-            ui.set(menu.yaw[2], 41)
-            ui.set(menu.body_yaw[2], 180)
+            ui.set(menu.yaw[2], 34)
+
         end
 
         ui.set(menu.yaw_jitter[1], "Center")
         ui.set(menu.yaw_jitter[2], 0)
         ui.set(menu.body_yaw[1], "Static")
+        ui.set(menu.body_yaw[2], 0)
 
         ui.set(menu.roll, 0)
     elseif ui.get(lua.preset.pre_type) == "Evade Special" then
@@ -994,8 +1027,8 @@ local function defensive_logic(arg)
         if get_player_state() == def_states_table[i] and getcombo(lua.def.def_conds, def_states_table[i]) == true then
             def_vars.is_true = true
         end
-        if ui.get(menu.doubletap[2]) == true or ui.get(menu.onshot[2]) == true then 
-            if def_vars.is_true == true and not ui.get(menu.fakeduck) then
+        if anti_aim.get_double_tap() then 
+            if def_vars.is_true == true then
                 arg.force_defensive = true
 
 
@@ -1147,6 +1180,17 @@ end
 local text_dst = 0
 local text_spr = 8
 local anim1 = 0
+local scopeFrac
+local scope_anim = 0
+
+local anims = {
+
+    dt = 0,
+    osaa = 0,
+    fd = 0,
+    fs = 0,
+
+}
 
 local function indicators()
     local lp = entity.get_local_player()
@@ -1162,11 +1206,18 @@ local function indicators()
     if not valid then
         return
     end
+    local isCharged = anti_aim.get_double_tap()
     local local_overlap = anti_aim.get_overlap()
     local weapon = entity.get_player_weapon(lp)
     local weap_name = entity.get_classname(weapon)
     local get_build = string.upper(curr_build)
     local nade_alpha = 0
+
+    local m_zoomLevel = entity.get_prop(weapon, 'm_zoomLevel')
+    local m_bIsScoped = entity.get_prop(lp, 'm_bIsScoped') == 1
+    local m_bResumeZoom = entity.get_prop(lp, 'm_bResumeZoom') == 1
+
+
 
     local rect_x = screen_x - 25
     local rect_y = screen_y + 31
@@ -1201,7 +1252,17 @@ local function indicators()
             "CMolotovGrenade",
             "CSmokeGrenade",
         },
+
+        adder = {
+
+            dst = 0,
+            spr = 10,
+
+        }
     }
+
+
+
 
 
     for i = 1, #vis_tables.nades do 
@@ -1233,26 +1294,107 @@ local function indicators()
         renderer.rectangle(rect_x + rect_w - rect_t, rect_y, rect_t, rect_h - rect_t, 45, 45, 45, 255  - nade_alpha)
         renderer.rectangle(rect_x + rect_t, rect_y + rect_h - rect_t, rect_w - rect_t, rect_t, 45, 45, 45, 255  - nade_alpha)
 
-        if #active_shit > 0 then
-            for i = 1, #active_shit do
+
+        for i = 1, #active_shit do
+
+            if #active_shit > 0 then
 
                 if anim1 < 8 then
                     anim1 = anim1 + 0.5
                 end
+                renderer.text(screen_x + anim1, screen_y + 31 + (i * 8), 255, 255, 255, (anim1 * 31.875) - nade_alpha , "-c", nil, active_shit[i][1])
+            else
 
-                renderer.text(screen_x + anim1, screen_y + 31 + (i * 8), 255, 255, 255, 255 - nade_alpha , "-c", nil, active_shit[i][1])
-            end
-
-        else
-            if anim1 > 0 then
-                anim1 = anim1 - 0.5
+                if anim1 > 0 then
+                    anim1 = anim1 - 0.5
+                end
+                renderer.text(screen_x + anim1, screen_y + 31 + (i * 8), 255, 255, 255, (anim1 * 31.875) - nade_alpha , "-c", nil, active_shit[i][1])
             end
         end
+    elseif ui.get(lua.visuals.crosshair) == "Modern" then
 
+        local packed_text = animate_text(globals.curtime(), "  "..string.lower(vis_tables.render_strings[1])..string.lower(string.sub(vis_tables.render_strings[2], 1, (renderer.measure_text(vis_tables.render_strings[2]) - 2))), vis_tables.cols.crosshair[1], vis_tables.cols.crosshair[2], vis_tables.cols.crosshair[3], vis_tables.cols.crosshair[4] - nade_alpha)
+        if m_bIsScoped then
+            if scope_anim < 30 then
+                scope_anim = scope_anim + 4
+            end
+        else
+            if scope_anim > 0 then
+                scope_anim = scope_anim - 4
+            end
+        end
+        renderer.text(screen_x + scope_anim + 3, screen_y + 24, vis_tables.cols.crosshair[1], vis_tables.cols.crosshair[2], vis_tables.cols.crosshair[3], vis_tables.cols.crosshair[4] - nade_alpha, "cd", nil, "⋆゜✧*̣̩☽⋆゜⋆")
+        renderer.text(screen_x + scope_anim, screen_y + 36, 255, 255, 255, 255, "cd", nil, unpack(packed_text))
+        local dt_charger = isCharged and "d" or ""
+
+        if ui.get(menu.doubletap[2]) then
+
+            vis_tables.adder.dst = vis_tables.adder.dst + vis_tables.adder.spr
+            if anims.dt < 14 then
+                anims.dt = anims.dt + 2
+            end
+
+            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.dt, not isCharged and 255 or 210, isCharged and 255 or 180, 180, math.min(255 - nade_alpha, anims.dt * 17), "cd", nil, "charge"..dt_charger)
+
+        else
+            
+            if anims.dt > 0 then
+                anims.dt = anims.dt - 2
+            end
+            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.dt, not isCharged and 255 or 210, isCharged and 255 or 180, 180, math.min(255 - nade_alpha, anims.dt * 17), "cd", nil, "charge"..dt_charger)
+        end
+
+        if ui.get(menu.onshot[1]) then
+
+            vis_tables.adder.dst = vis_tables.adder.dst + vis_tables.adder.spr
+            if anims.osaa < 14 then
+                anims.osaa = anims.osaa + 2
+            end
+
+            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.osaa, 255, 255, 255, math.min(255 - nade_alpha, anims.osaa * 17), "cd", nil, "osaa")
+
+        else
+            
+            if anims.osaa > 0 then
+                anims.osaa = anims.osaa - 2
+            end
+            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.osaa, 255, 255, 255, math.min(255 - nade_alpha, anims.osaa * 17), "cd", nil, "osaa")
+        end
+
+        if ui.get(menu.freestand[2]) then
+
+            vis_tables.adder.dst = vis_tables.adder.dst + vis_tables.adder.spr
+            if anims.fs < 14 then
+                anims.fs = anims.fs + 2
+            end
+
+            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.fs, 255, 255, 255, math.min(255 - nade_alpha, anims.fs * 17), "cd", nil, "fs body")
+
+        else
+            
+            if anims.fs > 0 then
+                anims.fs = anims.fs - 2
+            end
+            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.fs, 255, 255, 255, math.min(255 - nade_alpha, anims.fs * 17), "cd", nil, "fs body")
+        end
+
+        if ui.get(menu.fakeduck) then
+
+            vis_tables.adder.dst = vis_tables.adder.dst + vis_tables.adder.spr
+            if anims.fd < 14 then
+                anims.fd = anims.fd + 2
+            end
+
+            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.fd, 255, 255, 255, math.min(255 - nade_alpha, anims.fd * 17), "cd", nil, "duck")
+
+        else
+            
+            if anims.fd > 0 then
+                anims.fd = anims.fd - 2
+            end
+            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.fd, 255, 255, 255, math.min(255 - nade_alpha, anims.fd * 17), "cd", nil, "duck")
+        end
     end
-
-
-
 end
 
 local function debug_render()
