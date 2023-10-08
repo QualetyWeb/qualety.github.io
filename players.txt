@@ -280,6 +280,7 @@ local lua = {
         spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         def_conds = ui.new_multiselect("AA", "Anti-aimbot angles", "Conditions", {"Standing", "Air-Duck", "Air", "Running", "Duck", "Predict Visible", "Visible", "On Shot", "When Landing", "Unduck"}),
 
+        ignore_fs = ui.new_checkbox("AA", "Anti-aimbot angles", "Ignore freestanding"),
         spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
 
         override_def = ui.new_multiselect("AA", "Anti-aimbot angles", "Override Anti-aim", {"Override Yaw", "Override Pitch"}),
@@ -489,6 +490,7 @@ local function fix_antiaim_visibility()
         ui.set_visible(lua.def.toggle, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and has_access)
         ui.set_visible(lua.def.spacer1, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
         ui.set_visible(lua.def.def_conds, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.ignore_fs, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
         ui.set_visible(lua.def.override_def, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
         ui.set_visible(lua.def.spacer2, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
         ui.set_visible(lua.def.label1, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
@@ -1184,10 +1186,12 @@ local function disablers()
         ui.set(menu.freestand[2], "Always on")
         ui.set(menu.doubletap[3], "Defensive")
 
-        ui.set(menu.pitch[1], "Down")
-        ui.set(menu.yaw[2], 0)
-        ui.set(menu.body_yaw[1], "Static")
-        ui.set(menu.yaw_jitter[2], 0)
+        if def_vars.is_true == true and not ui.get(lua.def.ignore_fs) then
+            ui.set(menu.pitch[1], "Down")
+            ui.set(menu.yaw[2], 0)
+            ui.set(menu.body_yaw[1], "Static")
+            ui.set(menu.yaw_jitter[2], 0)
+        end
     else
         ui.set(menu.freestand[1], false)
         ui.set(menu.freestand[2], "On hotkey")
