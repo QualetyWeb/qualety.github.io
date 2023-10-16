@@ -1,14 +1,17 @@
 
 local ffi = require 'ffi';
 local bit = require 'bit';
+local clipboard = require "gamesense/clipboard";
 local http = require "gamesense/http" or error("Missing Http library");
 local vector = require 'vector' or error("Missing Vector library");
 local anti_aim = require 'gamesense/antiaim_funcs' or error("Missing antiaim funcs library");
+local base64 = require "gamesense/base64" or error("Missing base64 library");
+local c_entity = require("gamesense/entity") or error("Missing Entity library library");
 local animations = (function ()local a={data={}}function a:clamp(b,c,d)return math.min(d,math.max(c,b))end;function a:animate(e,f,g)if not self.data[e]then self.data[e]=0 end;g=g or 4;local b=globals.frametime()*g*(f and-1 or 1)self.data[e]=self:clamp(self.data[e]+b,0,1)return self.data[e]end;return a end)()
 js_loadstring = panorama.loadstring([[ return { OpenExternalBrowserURL: function(url) { void SteamOverlayAPI.OpenExternalBrowserURL(url) } } ]])()
 writefile("login_details.txt", "")
 writefile("evade_user.txt", "")
-
+writefile("hwid_management.txt", "")
 local function incrementLoadCount()
     local count = database.read("evade_stats")
     if count == nil then
@@ -22,15 +25,122 @@ local function incrementLoadCount()
 end
 local loadCount = incrementLoadCount()
 
-local c_entity = require("gamesense/entity") or error("Missing Entity library library");
+-- Load the FFI library
+local ffi = require("ffi")
+
+-- Declare the C functions and types locally
+ffi.cdef([[
+  typedef struct _RenderAdapterInfo {
+    char __m_pDriverName[512];
+    unsigned int __m_VendorID;
+    unsigned int __m_DeviceID;
+    unsigned int __m_SubSysID;
+    unsigned int __m_Revision;
+    int __m_nDXSupportLevel;
+    int __m_nMinDXSupportLevel;
+    int __m_nMaxDXSupportLevel;
+    unsigned int __m_nDriverVersionHigh;
+    unsigned int __m_nDriverVersionLow;
+    int64_t pad_0;
+  } RenderAdapterInfo, *PRenderAdapterInfo;
+]])
+
+local RenderAdapterInfo_t = ffi.typeof("RenderAdapterInfo")
+
+-- Bind the C functions from the materialsystem.dll library locally
+local native_get_current_adapter = vtable_bind("materialsystem.dll", "VMaterialSystem080", 25, "int(__thiscall*)(void*)")
+local native_get_adapter_info = vtable_bind("materialsystem.dll", "VMaterialSystem080", 26, "void(__thiscall*)(void*, int, $*)", RenderAdapterInfo_t)
+
+-- Define a function to get the current adapter index
+local function get_current_adapter()
+    return native_get_current_adapter()
+end
+
+-- Define a function to get the adapter info as a table
+local function get_adapter_info(adapter)
+    -- Create a new RenderAdapterInfo structure
+    local info = RenderAdapterInfo_t()
+    
+    -- Fill the structure with the information of the given adapter index
+    native_get_adapter_info(adapter, info)
+    
+    -- Convert the structure fields to Lua values and store them in a table
+    local result = {}
+    result.drivername = ffi.string(info.__m_pDriverName)
+    result.vendorid = tonumber(info.__m_VendorID)
+    result.deviceid = tonumber(info.__m_DeviceID)
+    result.subsysid = tonumber(info.__m_SubSysID)
+    result.revision = tonumber(info.__m_Revision)
+    result.dxsupportlevel = tonumber(info.__m_nDXSupportLevel)
+    result.mindxsupportlevel = tonumber(info.__m_nMinDXSupportLevel)
+    result.maxdxsupportlevel = tonumber(info.__m_nMaxDXSupportLevel)
+    result.driverversionhigh = tonumber(info.__m_nDriverVersionHigh)
+    result.driverversionlow = tonumber(info.__m_nDriverVersionLow)
+
+    return json.stringify(
+
+    result.drivername..
+    result.vendorid..
+    result.deviceid..
+    result.subsysid..
+    result.revision..
+    result.dxsupportlevel..
+    result.mindxsupportlevel..
+    result.maxdxsupportlevel..
+    result.driverversionhigh..
+    result.driverversionlow
+
+    )
+end
+
+-- Get the current adapter index
+local adapter = get_current_adapter()
+-- Get the adapter info as a table
+local hwid = get_adapter_info(adapter)
+-- Print the adapter info in a formatted way
+
+
+
+
+
+
+local get_base = {
+
+    encode = base64.encode(hwid, "base64"),
+    decode = ""
+}
+
 local curr_build = "Source"
 
 local login_details = {
     login = "NULL",
     access = false,
-    web_info = ""
-
+    web_info = "",
+    is_visible = false,
+    registration_data = get_base.encode,
+    is_registered = false,
+    bypass_register = false,
+    has_access = false
 }
+
+
+if readfile("hwid_management.txt") == get_base.encode then
+    login_details.is_registered = true
+end
+
+
+--[[
+
+local decode_button = ui.new_button("AA", "Anti-aimbot angles", "HWID PRINT", function()
+    get_base.encode = (base64.encode(hwid, "base64"))
+    get_base.decode = (base64.decode(get_base.encode, "base64"))
+
+    client.color_log(255, 255, 255, "Encoded: \n"..get_base.encode.."\n Decoded: \n"..get_base.decode)
+end)
+
+]]
+
+
 
 local play_data = {
 
@@ -61,8 +171,199 @@ end)
 
 
 
+local notify = (function()
+    local b = vector;
+    local c = function(d, b, c)
+        return d + (b - d) * c 
+    end;
+    local e = function()
+        return b(client.screen_size())
+    end;
+    local f = function(d,...)
+        local c = {...}
+        local c = table.concat(c, "")
+        return b(renderer.measure_text(d, c))
+    end;
+    
+    local g = {
+        notifications = {bottom = {}},
+        max = {bottom = 6}
+    }
+
+    g.__index = g;
+    g.new_bottom = function(h, i, j, ...)
+        table.insert(
+            g.notifications.bottom, 
+            {started=false, 
+            instance = setmetatable({active = false, timeout = 5, color = {["r"] = h, ["g"] = i, ["b"] = j, a = 0},x = e().x / 2, y = e().y, text = ...}, g)
+            }
+        )
+    end;
+        
+        
+    function g:handler()
+        local d = 0;
+        local b = 0;
+        for d, b in pairs(g.notifications.bottom) do 
+            if not b.instance.active and b.started then 
+                table.remove(g.notifications.bottom,d)
+            end
+        end;
+        
+        for d = 1, #g.notifications.bottom do
+            if g.notifications.bottom[d].instance.active then 
+                b = b + 1 
+            end
+        end;
+        
+        for c, e in pairs(g.notifications.bottom) do 
+            if c > g.max.bottom then 
+                return 
+            end;
+            if e.instance.active then
+                e.instance:render_bottom(d, b)
+                d = d + 1 
+            end;
+
+            if not e.started then 
+                e.instance:start()
+                e.started = true 
+            end 
+        end 
+    end;
+    
+    function g:start()
+        self.active = true;
+        self.delay = globals.realtime() + self.timeout 
+    end;
+    
+    function g:get_text()
+        local d = ""
+        for b, b in pairs(self.text) do 
+            local c = f("",b[1])
+            local c, e, f = 255, 255, 255;
+            if b[2] then
+                c, e, f = 187 ,180 ,255 
+            end;
+
+            d = d..("\a%02x%02x%02x%02x%s"):format(c,e,f,self.color.a,b[1])
+        end;
+        
+        return d 
+    end;
+    
+    local k = (function()
+        local d = {}
+        d.rec = function(d,b,c,e,f,g,k,l,m)
+            m = math.min(d / 2, b / 2, m)
+            renderer.rectangle(d, b + m, c, e - m * 2, f, g, k, l)
+            renderer.rectangle(d + m, b, c - m * 2, m, f, g, k, l)
+            renderer.rectangle(d + m, b + e - m, c - m * 2, m, f, g, k, l)
+            renderer.circle(d + m, b + m, f, g, k, l, m, 180, .25)
+            renderer.circle(d - m + c, b + m, f, g, k, l, m, 90, .25)
+            renderer.circle(d - m + c, b - m + e, f, g, k, l, m, 0, .25)
+            renderer.circle(d + m, b - m + e, f, g, k, l, m, -90, .25)
+        end;
+            
+        d.rec_outline = function(d, b, c, e, f, g, k, l, m, n)
+
+            --[[
+
+            d --> "X cordinates"
+            b --> "Y cordinates"
+            c --> "Width"
+
+
+
+            ]]
+
+            m = math.min(c / 2, e / 2, m)
+            if m == 1 then
+                renderer.rectangle(d, b, c, n, f, g, k, l)
+                renderer.rectangle(d, b + e - n, c, n, f, g, k, l)
+            else 
+                renderer.rectangle(d + m, b, c - m * 2, n, f, g, k, l)
+                renderer.rectangle(d + m, b + e - n, c - m * 2, n, f, g, k, l)
+                renderer.rectangle(d, b + m, n, e - m * 2, f, g, k, l)
+                renderer.rectangle(d + c - n, b + m, n, e - m * 2, f, g, k, l)
+                renderer.circle_outline(d + m, b + m, f, g, k, l, m, 180, .25, n)
+                renderer.circle_outline(d + m, b + e - m, f, g, k, l, m, 90, .25, n)
+                renderer.circle_outline(d + c - m, b + m, f, g, k, l, m, -90, .25, n)
+                renderer.circle_outline(d + c - m, b + e - m, f, g, k, l, m, 0, .25, n)
+            end
+        end;
+        
+        d.glow_module_notify = function(b, c, e, f, g, k, l, m, n, o, p, q, r, s, s)
+            local t = 1;
+            local u = 1;
+            if s then 
+                d.rec(b + 19, c + 1, e - 15, f - 1, l, m, n, o, k)
+            end;
+            
+            for l = 0, g do
+                local m = o / 2 * (l / g)^3;
+                d.rec_outline(b + (l - g - u) * t + 19, c + (l - g - u) * t + 1, e - (l - g - u) * t * 2 - 15, f - (l - g - u) * t * 2 - 1, p , q, r, m / 1.5, k + t * (g - l + u), t)
+            end 
+        end;
+        return d 
+    end)
+    
+    
+    ()function g:render_bottom(g,l)
+        local e = e()
+        local m = 6;
+        local n = "     "..self:get_text()
+        local f = f("", n)
+        local o = 8;
+        local p = 5;
+        local q = 0 + m + f.x;
+        local q, r = q + p * 2, 12 + 10 + 1;
+        local s, t = self.x - q / 2, math.ceil(self.y - 40 + .4)
+        local u = globals.frametime()
+        if globals.realtime() < self.delay then
+            self.y = c(self.y, e.y - 45 - (l - g) * r * 1.4, u * 7)
+            self.color.a = c(self.color.a, 255, u * 2)
+        else
+            self.y = c(self.y, self.y - 10, u * 15)
+            self.color.a = c(self.color.a, 0, u * 20)
+            if self.color.a <= 1 then
+                self.active=false 
+            end 
+        end;
+        local h, i, j, l = self.color.r, self.color.g, self.color.b, self.color.a;
+
+
+        k.glow_module_notify(s, t, q, r, 15, o, 25, 25, 25, l, 159, 158, 255, l, true)
+
+        
+        local k = p + 2;
+        k = k + 0 + m;
+       -- renderer.text(s + k, t + r / 2 - f.y / 2, 159, 158, 255, l, "b", nil, "E")
+        renderer.text(s + k, t + r / 2 - f.y / 2, 255, 255, 255, l, "", nil, n)
+    end;
+    
+    client.set_event_callback("paint_ui",function()
+        g:handler()
+    end)
+    return g
+    
+end)()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 -- PREDICT DEBUGGING
-require( "vector3" );
+require( "vector3" )
 local get_prop         		= entity.get_prop
 local ui_get           		= ui.get
 local get_local_player 		= entity.get_local_player
@@ -185,23 +486,106 @@ local aa_type = ui.new_combobox("AA", "Anti-aimbot angles", "Anti-Aim Type", {"N
 
 local login_menu = {
 
-    no_access_msg1 = ui.new_label("AA", "Anti-aimbot angles", "You're not logged in! \n Time: "..globals.curtime()),
+    no_access_msg1 = ui.new_label("AA", "Anti-aimbot angles", "You're not logged in!"),
     login_spacer = ui.new_label("AA", "Anti-aimbot angles", " "),
     user_label = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFUsername"),
     enter_user = ui.new_textbox("AA", "Anti-aimbot angles", "Username"),
     pass_label = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFPassword"),
     enter_pass = ui.new_textbox("AA", "Anti-aimbot angles", "Password"),
+
+
+    -- Registration
+
+    no_register_label = ui.new_label("AA", "Anti-aimbot angles", "You have not yet registered!"),
+    register_spacer1 = ui.new_label("AA", "Anti-aimbot angles", " "),
+    user_label2 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFUsername"),
+    enter_user2 = ui.new_textbox("AA", "Anti-aimbot angles", "Username"),
+    pass_label2 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFPassword"),
+    enter_pass2 = ui.new_textbox("AA", "Anti-aimbot angles", "Password"),
+    key_label2 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFRegistration Key"),
+    key_pass2 = ui.new_textbox("AA", "Anti-aimbot angles", "Registration Key"),
+    
+
+
+
 }
 
+
+local import_key = ui.new_button("AA", "Anti-aimbot angles", "^ Import From Clipboard ^", function() 
+    get_clipboard = clipboard.get()
+    ui.set(login_menu.key_pass2, tostring(get_clipboard))
+end)
+local register_spacer2 = ui.new_label("AA", "Anti-aimbot angles", " ")
+
+
+
+local double_check_register = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFRegister", function ()
+
+login_details.is_visible = true
+end)
+
+local confirm_register = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFRegister (Confirm)", function ()
+    get_base.encode = (base64.encode(hwid, "base64"))
+
+
+    registration_string = (ui.get(login_menu.enter_user2).." "..ui.get(login_menu.enter_pass2))
+    local tostring_login = (ui.get(login_menu.enter_user2)..ui.get(login_menu.enter_pass2))..ui.get(login_menu.key_pass2) 
+    get_login = registration_string == "" and "NULL" or registration_string == " " and "NULL" or registration_string == "  " and "NULL" or registration_string
+    if 
+    --string.find(tostring_login, "") or 
+    string.find(tostring_login, " ") or 
+    string.find(tostring_login, "  ") or 
+    string.find(tostring_login, "   ") or 
+    string.find(tostring_login, "    ") or 
+    string.find(tostring_login, "     ") or
+    ui.get(login_menu.enter_user2) == "" or 
+    ui.get(login_menu.enter_pass2) == "" or 
+    ui.get(login_menu.key_pass2) == ""
+    then
+        get_login = "NULL"
+    end
+    if string.find(login_details.web_info, get_login) and string.find(login_details.web_info, ui.get(login_menu.key_pass2)) then
+        login_details.is_registered = true
+        client.color_log(235, 220, 255, "You've successfully registered an Evade account!")
+        writefile("hwid_management.txt", get_base.encode)
+        notify.new_bottom(255, 255, 255,{ {"Account Has Been Successfully Created!"} })
+
+    else
+        if registration_string == "" or registration_string == " " or registration_string == "  " then
+            login_details.is_registered = false
+            client.color_log(255, 180, 180, "Insufficient Credentials")
+            notify.new_bottom(255, 255, 255, {{"Failed To Create Account"}})
+        else
+            login_details.is_registered = false
+            client.color_log(255, 180, 180, "Incorrect Username Or Password!")
+            notify.new_bottom(255, 255, 255, {{"Failed To Create Account"}})
+        end
+    end
+
+
+
+end)
+
+
+
+
+deny_register = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFRegister (Cancel)", function ()
+
+login_details.is_visible = false
+end)
 
 local login_button = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFLoad", function ()
     get_log_vals = (ui.get(login_menu.enter_user).." "..ui.get(login_menu.enter_pass))
     get_login = get_log_vals == "" and "NULL" or get_log_vals == " " and "NULL" or get_log_vals == "  " and "NULL" or get_log_vals
+
+
+
     if string.find(login_details.web_info, get_login) then
         login_details.access = true
         client.color_log(235, 220, 255, "Successfully Loaded Evade!")
         writefile("login_details.txt", get_login)
         writefile("evade_user.txt", ui.get(login_menu.enter_user))
+        notify.new_bottom(255, 255, 255,{ {"Successfully logged in as: "}, {tostring(readfile("evade_user.txt")), true}})
     else
         if get_log_vals == "" or get_log_vals == " " or get_log_vals == "  " then
             login_details.access = false
@@ -212,6 +596,8 @@ local login_button = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFLoad",
         end
     end
 end)
+
+
 
 
 local lua = {
@@ -287,12 +673,15 @@ local lua = {
 
         label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFYaw"),
         spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-        yaw_type = ui.new_combobox("AA", "Anti-aimbot angles", "Yaw Types", {"Static", "Jitter", "Slow Jitter", "Spin"}),
+        yaw_type = ui.new_combobox("AA", "Anti-aimbot angles", "Yaw Types", {"Static", "Jitter", "Slow Jitter", "Spin", "Breaker"}),
         yaw = ui.new_slider("AA", "Anti-aimbot angles", "Base Yaw", -100, 100, 0),
         radius = ui.new_slider("AA", "Anti-aimbot angles", "Radius", -50, 50, 0),
-        delay = ui.new_slider("AA", "Anti-aimbot angles", "Speed / Delay", 1, 40, 1),
+        delay = ui.new_slider("AA", "Anti-aimbot angles", "Speed / Delay", 1, 10, 1),
         spin_radius = ui.new_slider("AA", "Anti-aimbot angles", "Radius", 0, 360, 0, true, "°"),
         spin_direction = ui.new_slider("AA", "Anti-aimbot angles", "Direction", 1, 2, 1, true, "*", 1, {[1] = "Left", [2] = "Right"}),
+        breaker_sequence = ui.new_combobox("AA", "Anti-aimbot angles", "Sequence Type", {"1 <-> 3", "1 >-< 3", "Unpure"}),
+        breaker_statement1 = ui.new_slider("AA", "Anti-aimbot angles", "Statement #1", -30, 30, 0, true, "", 1, {[0] = "Invalid"}),
+        breaker_statement2 = ui.new_slider("AA", "Anti-aimbot angles", "Statement #2 (Δ)", -10, 10, 0, true, "Δ", 1, {[0] = "Invalid"}),
 
 
         spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
@@ -396,7 +785,21 @@ local on_load = function()
     if string.find(login_details.web_info, readfile("login_details.txt")) then
         login_details.access = true
     end
+
+    if login_details.is_registered == false then
+        login_details.access = false
+    end
 end
+
+
+
+
+
+
+local get_username = readfile("evade_user.txt") ~= nil and readfile("evade_user.txt") or "unknown"
+
+notify.new_bottom(255, 255, 255, { { 'Welcome ' }, { get_username.. " ", true}, {"to evade!"} })
+
 
 
 
@@ -451,6 +854,7 @@ end
 local function fix_antiaim_visibility()
 
     local has_access = login_details.access == true
+    login_details.has_access = has_access
     local when_builder = ui.get(aa_type) == "Builder" and ui.get(aa_tabs) == "Anti-Aimbot"
     local when_preset = ui.get(aa_type) == "Presets" and ui.get(aa_tabs) == "Anti-Aimbot"
     ui.set_visible(lua.preset.label1, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset and has_access)
@@ -496,12 +900,15 @@ local function fix_antiaim_visibility()
         ui.set_visible(lua.def.label1, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
         ui.set_visible(lua.def.spacer3, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
         ui.set_visible(lua.def.yaw_type, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.yaw, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.radius, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Spin" and ui.get(lua.def.yaw_type) ~= "Static" and has_access)
-        ui.set_visible(lua.def.delay, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Jitter" and ui.get(lua.def.yaw_type) ~= "Static" and has_access)
+        ui.set_visible(lua.def.yaw, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
+        ui.set_visible(lua.def.radius, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Spin" and ui.get(lua.def.yaw_type) ~= "Static" and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
+        ui.set_visible(lua.def.delay, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Jitter" and ui.get(lua.def.yaw_type) ~= "Static" and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
         ui.set_visible(lua.def.spin_radius, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Spin" and has_access)
         ui.set_visible(lua.def.spin_direction, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Spin" and has_access)
 
+        ui.set_visible(lua.def.breaker_sequence, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Breaker" and has_access)
+        ui.set_visible(lua.def.breaker_statement1, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Breaker" and has_access)
+        ui.set_visible(lua.def.breaker_statement2, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Breaker" and has_access)
 
         ui.set_visible(lua.def.spacer3, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
         ui.set_visible(lua.def.label2, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
@@ -520,6 +927,13 @@ local function fix_antiaim_visibility()
 
         ui.set_visible(antiaim[1].ovr_state, false)
     end
+
+
+
+
+    ui.set_visible(deny_register, login_details.is_visible and login_details.is_registered == false)
+    ui.set_visible(confirm_register, login_details.is_visible and login_details.is_registered == false)
+    ui.set_visible(double_check_register, not login_details.is_visible and login_details.is_registered == false)
 end
 
 
@@ -580,6 +994,8 @@ local def_vars = {
     correct_mag_timer = 0,
     jitter_switch = false,
 
+    slow_timer = 0, 
+
     defensive = {
         cmd = 0,
         check = 0,
@@ -595,6 +1011,15 @@ end
 local time_to_ticks = function(t)
     return math.floor(t / globals.tickinterval() + 0.5)
 end
+
+local aa_table = {
+    side = 0,
+    last_rand = 0,
+    skitter_counter = 0,
+    last_skitter = 0,
+    last_count = 0,
+    cycle = 0
+}
 local func = {
 
     _2hex = function(redArg, greenArg, blueArg, alphaArg)
@@ -622,6 +1047,30 @@ local func = {
         local flags = entity.get_prop(localplayer, 'm_fFlags');
     end,
 
+    normalize = function(angle)
+        angle =  angle % 359.9 
+        angle = (angle + 359.9) % 359.9
+        if (angle >= 180)  then
+            angle = angle - 360
+        end
+        return angle
+    end,
+
+
+
+    delayed_jitter = function(self, cmd, data)
+        local delay = {math.random(1, math.random(3, 4)), 2, 4, 5}
+        local delayed = true
+
+        if globals.chokedcommands() == 0 and aa_table.cycle == delay[lua.def.delay] then
+            delayed = false
+            self.side = self.side == 1 and 0 or 1
+        end
+
+
+
+        return (side == 2) and 0 or (side == 1 and 90 or -90)
+    end,
     
 
 }
@@ -893,25 +1342,24 @@ local function presets(arg)
         ui.set(menu.body_yaw[2], 1)
         ui.set(menu.roll, 0)
     elseif ui.get(lua.preset.pre_type) == "Delayed" then
+
+
         arg.force_defensive = false
-
-        if globals.tickcount() % 6 == 1 then
-            def_vars.jitter_switch = not def_vars.jitter_switch
+        local get_slowtime = (math.floor(globals.tickcount() * (globals.tickinterval() + 1))) % 16
+        ui.set(menu.body_yaw[2], -90)
+        if get_slowtime >= (16 / 2) then
+            ui.set(menu.yaw[2], -23)
+            ui.set(menu.body_yaw[2], -90)
+        else if get_slowtime <= (16 / 2) then
+            ui.set(menu.yaw[2], 41)
+            ui.set(menu.body_yaw[2], 0)
         end
-        if def_vars.jitter_switch then
-            ui.set(menu.yaw[2], -13)
-            
-        else
-            ui.set(menu.yaw[2], 34)
-
         end
-
-        ui.set(menu.yaw_jitter[1], "Center")
-        ui.set(menu.yaw_jitter[2], 0)
         ui.set(menu.body_yaw[1], "Static")
-        ui.set(menu.body_yaw[2], 0)
 
         ui.set(menu.roll, 0)
+
+
     elseif ui.get(lua.preset.pre_type) == "Evade Special" then
 
 
@@ -963,6 +1411,15 @@ client.set_event_callback("run_command", function(e)
     def_vars.defensive.cmd = e.command_number
 end)
 
+local setup_defensive = {
+
+    yaw = 0,
+    body_offset = 0,
+    side_counter = 0,
+    side = 0,
+    cycle = 0
+
+}
 
 
 client.set_event_callback("predict_command", function(e)
@@ -985,7 +1442,7 @@ local function defensive_logic(arg)
     local weapon = entity.get_player_weapon(lp)
         
     if not ui.get(lua.def.toggle) then return end
-    
+
 
     local lag_timer = entity.get_prop(lp, "m_nTickbase") % ui.get(lua.def.pause_time) == 0
     local air = bit.band(entity.get_prop(lp, "m_fFlags"), 1) == 0
@@ -993,7 +1450,7 @@ local function defensive_logic(arg)
     local sv_tick = globals.tickcount()
     local current_time = globals.realtime()
     local pitch_variable = ((1 + math.cos((current_time - pre.start_time) * 40)) / 2) * 360
-    local slow_yaw_var = ((1 + math.cos((current_time - pre.start_time) * ui.get(lua.def.delay))) / 2) * 30
+    local slow_yaw_var = ((1 + math.cos((current_time - pre.start_time) * (ui.get(lua.def.delay) * 4))) / 2) * 30
 
     local compensate_camera = client.camera_angles() - 360
     arg.force_defensive = false
@@ -1006,13 +1463,19 @@ local function defensive_logic(arg)
     end
 
 
+    if globals.chokedcommands() == 0 and setup_defensive.cycle == ui.get(lua.def.delay) then
+        delayed = false
+        setup_defensive.side = setup_defensive.side == 1 and 0 or 1
+    end
+
+
     if ui.get(lua.def.spin_radius) > 340 then
         def_vars.spin_fix = ui.get(lua.def.spin_radius) - 23
     else
         def_vars.spin_fix = ui.get(lua.def.spin_radius)
     end
     if def_vars.set_loop <= def_vars.spin_fix then
-        def_vars.set_loop = def_vars.set_loop + 1 + ui.get(lua.def.delay) * 2
+        def_vars.set_loop = def_vars.set_loop + 1 + ui.get(lua.def.delay) * 8
     end
     if def_vars.set_loop > def_vars.spin_fix then
         def_vars.set_loop = 0
@@ -1068,10 +1531,16 @@ local function defensive_logic(arg)
                     ui.set(menu.fakeduck, lag_timer and "Always on" or "On hotkey")
                     ui.set(menu.ragebot_toggle, false)
                     
-                    arg.in_duck = not lag_timer
+                   -- arg.in_duck = not lag_timer
                 end
 
-
+                if globals.chokedcommands() == 0 then
+                    if setup_defensive.cycle >= ui.get(lua.def.delay) then
+                        setup_defensive.cycle = 1
+                    else
+                        setup_defensive.cycle = setup_defensive.cycle + 1
+                    end
+                end
 
                 local current_time = globals.realtime()
                 ui.set(menu.yaw_jitter[1], "Center")
@@ -1091,13 +1560,67 @@ local function defensive_logic(arg)
                     ui.set(menu.body_yaw[1], "Jitter")
                     ui.set(menu.body_yaw[2], 1)
 
-                elseif ui.get(lua.def.yaw_type) == "Slow Jitter" then
-                    if globals.tickcount() % ui.get(lua.def.delay) == 1 then
-                        def_vars.jitter_switch = not def_vars.jitter_switch
+                elseif ui.get(lua.def.yaw_type) == "Breaker" then
+                    local sequence = {0, 2, 1, 0, 2, 1, 0, 1, 2, 0, 1, 2, 0, 1, 2}
+                    if ui.get(lua.def.breaker_sequence) == "1 <-> 3" then
+                        local sequence = {0, 2, 1, 0, 2, 1, 0, 1, 2, 0, 1, 2, 0, 1, 2}
+                    elseif ui.get(lua.def.breaker_sequence) == "1 >-< 3" then
+                        local sequence = {1, 2, 0, 1, 2, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0}
+                    else
+                        local sequence = {0, 0, 1, 1, 2, 1, 0, 0, 2, 2, 2, 0, 1, 1, 0, 1, 2, 1, 0, 0, 2, 1, 1}
                     end
-                    ui.set(menu.yaw[2], def_vars.jitter_switch and (ui.get(lua.def.radius) / -1 + ui.get(lua.def.yaw)) or (ui.get(lua.def.radius) / 1 + ui.get(lua.def.yaw)))
+                    local next_side
+                    if setup_defensive.side_counter == #sequence then
+                        setup_defensive.side_counter = 1
+                    elseif not delayed then
+                        setup_defensive.side_counter = setup_defensive.side_counter + 1
+                    end
+    
+                    next_side = sequence[setup_defensive.side_counter]
+    
+                    side = next_side
+
+    
+                    if next_side == 0 then
+                        setup_defensive.yaw = setup_defensive.yaw - 16 - math.abs(ui.get(lua.def.breaker_statement2)) + math.exp(math.abs(ui.get(lua.def.breaker_statement1)))
+                    elseif next_side == 1 then
+                        setup_defensive.yaw = setup_defensive.yaw + 16 + math.abs(ui.get(lua.def.breaker_statement2)) + math.exp(math.abs(ui.get(lua.def.breaker_statement1)))
+                    end
+
+                    print(func.normalize(setup_defensive.yaw))
+
+
+
+
+
+
+                    ui.set(menu.body_yaw[1], "Static")
+                    ui.set(menu.yaw[2], func.normalize(setup_defensive.yaw))
+                    ui.set(menu.yaw_jitter[2], 0)
+                elseif ui.get(lua.def.yaw_type) == "Slow Jitter" then
+
+                    if globals.chokedcommands() == 0 then
+                        ui.set(menu.body_yaw[2], -90)
+                        local get_slowtime = (math.floor(globals.tickcount() * (globals.tickinterval() + 1))) % (ui.get(lua.def.delay) * 4)
+
+                        if get_slowtime >= ((ui.get(lua.def.delay) * 4) / 2) then
+                            setup_defensive.yaw = (ui.get(lua.def.radius) / -1 + ui.get(lua.def.yaw))
+
+                            ui.set(menu.body_yaw[2], 180)
+                        else if get_slowtime <= (ui.get(lua.def.delay) * 4) / 2 then
+                            setup_defensive.yaw = (ui.get(lua.def.radius) / 1 + ui.get(lua.def.yaw))
+
+                            ui.set(menu.body_yaw[2], -180)
+                        end
+                        end
                     
-                    ui.set(menu.body_yaw[1], "Opposite")
+                        ui.set(menu.body_yaw[1], "Static")
+                        ui.set(menu.yaw[2], func.normalize(setup_defensive.yaw))
+                    end
+
+
+
+
                     --[[
 
                     if slow_yaw_var >= 15 then
@@ -1110,7 +1633,7 @@ local function defensive_logic(arg)
 
                     ]]
 
-                    ui.set(menu.yaw_jitter[2], 0)
+
                 elseif ui.get(lua.def.yaw_type) == "Spin" then
                     if isDefensive then
                         ui.set(menu.yaw[2], yaw_val + def_vars.base)
@@ -1119,6 +1642,12 @@ local function defensive_logic(arg)
                         ui.set(menu.body_yaw[2], 50)
                     end
                 end
+
+
+
+
+
+
 
                 for i = 1, #pitch_str do
                     
@@ -1363,7 +1892,7 @@ local function indicators()
 
             vis_tables.adder.dst = vis_tables.adder.dst + vis_tables.adder.spr
             if anims.dt < 14 then
-                anims.dt = anims.dt + 2
+                anims.dt = anims.dt + 1
             end
 
             renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.dt, not isCharged and 255 or 210, isCharged and 255 or 180, 180, math.min(255 - nade_alpha, anims.dt * 17), "cd", nil, "charge"..dt_charger)
@@ -1371,7 +1900,7 @@ local function indicators()
         else
             
             if anims.dt > 0 then
-                anims.dt = anims.dt - 2
+                anims.dt = anims.dt - 1
             end
             renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.dt, not isCharged and 255 or 210, isCharged and 255 or 180, 180, math.min(255 - nade_alpha, anims.dt * 17), "cd", nil, "charge"..dt_charger)
         end
@@ -1380,7 +1909,7 @@ local function indicators()
 
             vis_tables.adder.dst = vis_tables.adder.dst + vis_tables.adder.spr
             if anims.osaa < 14 then
-                anims.osaa = anims.osaa + 2
+                anims.osaa = anims.osaa + 1
             end
 
             renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.osaa, 255, 255, 255, math.min(255 - nade_alpha, anims.osaa * 17), "cd", nil, "osaa")
@@ -1388,7 +1917,7 @@ local function indicators()
         else
             
             if anims.osaa > 0 then
-                anims.osaa = anims.osaa - 2
+                anims.osaa = anims.osaa - 1
             end
             renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.osaa, 255, 255, 255, math.min(255 - nade_alpha, anims.osaa * 17), "cd", nil, "osaa")
         end
@@ -1397,7 +1926,7 @@ local function indicators()
 
             vis_tables.adder.dst = vis_tables.adder.dst + vis_tables.adder.spr
             if anims.fs < 14 then
-                anims.fs = anims.fs + 2
+                anims.fs = anims.fs + 1
             end
 
             renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.fs, 255, 255, 255, math.min(255 - nade_alpha, anims.fs * 17), "cd", nil, "fs body")
@@ -1405,7 +1934,7 @@ local function indicators()
         else
             
             if anims.fs > 0 then
-                anims.fs = anims.fs - 2
+                anims.fs = anims.fs - 1
             end
             renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.fs, 255, 255, 255, math.min(255 - nade_alpha, anims.fs * 17), "cd", nil, "fs body")
         end
@@ -1414,7 +1943,7 @@ local function indicators()
 
             vis_tables.adder.dst = vis_tables.adder.dst + vis_tables.adder.spr
             if anims.fd < 14 then
-                anims.fd = anims.fd + 2
+                anims.fd = anims.fd + 1
             end
 
             renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.fd, 255, 255, 255, math.min(255 - nade_alpha, anims.fd * 17), "cd", nil, "duck")
@@ -1422,7 +1951,7 @@ local function indicators()
         else
             
             if anims.fd > 0 then
-                anims.fd = anims.fd - 2
+                anims.fd = anims.fd - 1
             end
             renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.fd, 255, 255, 255, math.min(255 - nade_alpha, anims.fd * 17), "cd", nil, "duck")
         end
@@ -1522,13 +2051,26 @@ client.set_event_callback("paint_ui", function()
     on_load()
     db_load()
     local has_access = login_details.access == true
-    ui.set_visible(login_menu.no_access_msg1, login_details.access == false)
-    ui.set_visible(login_menu.login_spacer, login_details.access == false)
-    ui.set_visible(login_menu.user_label, login_details.access == false)
-    ui.set_visible(login_menu.enter_user, login_details.access == false)
-    ui.set_visible(login_menu.pass_label, login_details.access == false)
-    ui.set_visible(login_menu.enter_pass, login_details.access == false)
-    ui.set_visible(login_button, login_details.access == false)
+
+    ui.set_visible(login_menu.no_access_msg1, login_details.access == false and login_details.is_registered == true)
+    ui.set_visible(login_menu.login_spacer, login_details.access == false and login_details.is_registered == true)
+    ui.set_visible(login_menu.user_label, login_details.access == false and login_details.is_registered == true)
+    ui.set_visible(login_menu.enter_user, login_details.access == false and login_details.is_registered == true)
+    ui.set_visible(login_menu.pass_label, login_details.access == false and login_details.is_registered == true)
+    ui.set_visible(login_menu.enter_pass, login_details.access == false and login_details.is_registered == true)
+    ui.set_visible(login_button, login_details.access == false and login_details.is_registered == true)
+
+    ui.set_visible(login_menu.no_register_label, login_details.access == false and login_details.is_registered == false)
+    ui.set_visible(login_menu.register_spacer1, login_details.access == false and login_details.is_registered == false)
+    ui.set_visible(login_menu.user_label2, login_details.access == false and login_details.is_registered == false)
+    ui.set_visible(login_menu.enter_user2, login_details.access == false and login_details.is_registered == false)
+    ui.set_visible(login_menu.pass_label2, login_details.access == false and login_details.is_registered == false)
+    ui.set_visible(login_menu.enter_pass2, login_details.access == false and login_details.is_registered == false)
+    ui.set_visible(login_menu.key_label2, login_details.access == false and login_details.is_registered == false)
+    ui.set_visible(login_menu.key_pass2, login_details.access == false and login_details.is_registered == false)
+    ui.set_visible(import_key, login_details.access == false and login_details.is_registered == false)
+    ui.set_visible(register_spacer2, login_details.access == false and login_details.is_registered == false)
+
     --ui.set_visible(no_access_msg2, get_access() == false)
     indicators()
 
@@ -1612,12 +2154,7 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.visuals.crosshair,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
     ui.set_visible(lua.visuals.other,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
     ui.set_visible(lua.visuals.logs,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
-
-
-
-
 end)
-
 
 
 
