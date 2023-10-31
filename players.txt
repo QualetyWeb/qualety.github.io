@@ -12,6 +12,7 @@ js_loadstring = panorama.loadstring([[ return { OpenExternalBrowserURL: function
 writefile("login_details.txt", "")
 writefile("evade_user.txt", "")
 writefile("hwid_management.txt", "")
+writefile("evade_autosave.txt", "")
 
 local new_tbl = {
     hp = 100,
@@ -1359,8 +1360,9 @@ for i, v in pairsort(states) do
 end
 
 local config_sys = {
+    label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFConfig System"),
+    spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
 
-    
     export_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFExport  ", function() 
     
     
@@ -1422,7 +1424,7 @@ local config_sys = {
     end),
 
     default_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFLoad Default  ", function() 
-        for k, v in pairs(json.parse(base64.decode("W3t9LHt9LHt9LFsxLDM1LC0yMiw4LCJTbG93IiwiR2FtZXNlbnNlIiw1OCx0cnVlLDAsIk9mZiIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLGZhbHNlLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEsMzcsLTI0LDIsIlNsb3ciLCJHYW1lc2Vuc2UiLDU4LHRydWUsMCwiT2ZmIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZBZGp1c3QgQm9keSBZYXciLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRllhdyBKaXR0ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkRlc3luYyIsdHJ1ZSwiICIsIiAiLCIgIiwiICIsIiAiLCIgIiwxLDM1LC0yMiwyLCJEZWZhdWx0IiwiR2FtZXNlbnNlIiw1OCx0cnVlLDAsIk9mZiIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLGZhbHNlLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEsMzUsLTIyLDIsIkRlZmF1bHQiLCJHYW1lc2Vuc2UiLDU4LHRydWUsMCwiT2ZmIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZBZGp1c3QgQm9keSBZYXciLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRllhdyBKaXR0ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkRlc3luYyIsZmFsc2UsIiAiLCIgIiwiICIsIiAiLCIgIiwiICIsMSwtMiwyLDIsIlNsb3ciLCJHYW1lc2Vuc2UiLDU4LHRydWUsMCwiT2ZmIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZBZGp1c3QgQm9keSBZYXciLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRllhdyBKaXR0ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkRlc3luYyIsdHJ1ZSwiICIsIiAiLCIgIiwiICIsIiAiLCIgIiwxLDM1LC0yMiwyLCJEZWZhdWx0IiwiR2FtZXNlbnNlIiw1OCx0cnVlLDAsIk9mZiIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLHRydWUsIiAiLCIgIiwiICIsIiAiLCIgIiwiICIsMSwzNSwtMjIsMiwiRGVmYXVsdCIsIkdhbWVzZW5zZSIsNTgsdHJ1ZSwwLCJPZmYiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIixmYWxzZSwiICIsIiAiLCIgIiwiICIsIiAiLCIgIl0se31d"))) do
+        for k, v in pairs(json.parse(base64.decode("W3t9LHt9LHt9LFsxLDM1LC0yMiw4LCJTbG93IiwiR2FtZXNlbnNlIiw1OCx0cnVlLDAsIk9mZiIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLGZhbHNlLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEsMzcsLTI0LDIsIlNsb3ciLCJHYW1lc2Vuc2UiLDU4LHRydWUsMCwiT2ZmIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZBZGp1c3QgQm9keSBZYXciLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRllhdyBKaXR0ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkRlc3luYyIsdHJ1ZSwiICIsIiAiLCIgIiwiICIsIiAiLCIgIiw0LDM3LC0yOCwyLCJTbG93IiwiR2FtZXNlbnNlIiw1OCx0cnVlLDAsIk9mZiIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLHRydWUsIiAiLCIgIiwiICIsIiAiLCIgIiwiICIsMiwzNSwtMjQsMiwiU2xvdyIsIkdhbWVzZW5zZSIsNTgsdHJ1ZSwyNywiU3RvbXAiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIix0cnVlLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDQsLTIsMiw1LCJTbG93IiwiR2FtZXNlbnNlIiw1OCx0cnVlLDM2LCJTdG9tcCIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLHRydWUsIiAiLCIgIiwiICIsIiAiLCIgIiwiICIsMSwzNSwtMjIsNiwiU2xvdyIsIkdhbWVzZW5zZSIsNTgsdHJ1ZSwwLCJPZmYiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIix0cnVlLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEsMzEsLTMyLDE1LCJTbG93IiwiR2FtZXNlbnNlIiw1OCx0cnVlLDAsIk9mZiIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLHRydWUsIiAiLCIgIiwiICIsIiAiLCIgIiwiICJdLHt9XQ=="))) do
             k = ({[1] = "bools", [2] = "tables",[3] = "ints",[4] = "numbers"})[k]
             for k2, v2 in pairs(v) do
                 if (k == "bools") then
@@ -1444,10 +1446,71 @@ local config_sys = {
         end
 
         notify.new_bottom(255, 255, 255, {{"Loaded "}, {"default", true}, {" config"}})
+    end),
+
+    spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+
+    auto_save = ui.new_button("AA", "Anti-aimbot angles", "\aE8E8E8FFPush current settings on \aBBC0F3FFload", function()
+        local cfg = {}
+
+        local Code = {{},{},{},{},{}}
+		for _, bools in pairs(data.bools) do
+			table.insert(Code[1], ui.get(bools))
+		end
+		
+		for _, tables in pairs(data.tables) do
+			table.insert(Code[2], ui.get(tables))
+		end
+		
+		for _, ints in pairs(data.ints) do
+			table.insert(Code[3], ui.get(ints))
+		end
+		
+		for _, numbers in pairs(data.numbers) do
+			table.insert(Code[4], ui.get(numbers))
+		end
+        local stringed = json.stringify(Code)
+        writefile("evade_autosave.txt", stringed)
+
+
+        notify.new_bottom(255, 255, 255, {{"Pushed current settings to "}, {"\"on-load\"", true}, {"!"}})
     end)
 
-
 }
+
+
+
+
+if readfile("evade_autosave.txt") ~= nil then
+    cfg_value = json.parse(readfile("evade_autosave.txt"))
+    for k, v in pairs(cfg_value) do
+        k = ({[1] = "bools", [2] = "tables",[3] = "ints",[4] = "numbers"})[k]
+        for k2, v2 in pairs(v) do
+            if (k == "bools") then
+                ui.set(data[k][k2], v2)
+            end
+
+            if (k == "tables") then
+                ui.set(data[k][k2], v2)
+            end
+
+            if (k == "ints") then
+                ui.set(data[k][k2], v2)
+            end
+
+            if (k == "numbers") then
+                ui.set(data[k][k2], v2)
+            end
+        end
+    end
+end
+
+
+
+
+
+
+
 
 
 local function fix_antiaim_visibility()
@@ -1460,7 +1523,10 @@ local function fix_antiaim_visibility()
     ui.set_visible(config_sys.export_cfg, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
     ui.set_visible(config_sys.import_cfg, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
     ui.set_visible(config_sys.default_cfg, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
-
+    ui.set_visible(config_sys.spacer1, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
+    ui.set_visible(config_sys.spacer2, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
+    ui.set_visible(config_sys.label1, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
+    ui.set_visible(config_sys.auto_save, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
 
     ui.set_visible(lua.preset.label1, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset and has_access)
     ui.set_visible(lua.preset.spacer1, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset and has_access)
