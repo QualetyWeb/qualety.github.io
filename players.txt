@@ -91,6 +91,8 @@ tbl.antiaim = {
     active = false,
     count = false,
     ready = false,
+    ready1 = false,
+    ready2 = false,
     timer = 0,
     fs = 0,
     last = 0,
@@ -1293,7 +1295,11 @@ for i, v in next, states do
         b_yaw = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Base Yaw", -100, 100, 0),
         b_left = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Left", -100, 100, 0),
         b_right = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Right", -100, 100, 0),
-        b_delay = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Delay", 1, 10, 1),
+        slow_type = ui.new_combobox("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FFSwitch Type", {"Single", "Double", "Unpredictive"}),
+        switch_timer = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Timer", 1, 15, 0),
+        b_delay = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Delay", 1, 15, 1),
+        b_delay1 = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Delay 1", 1, 15, 1),
+        b_delay2 = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Delay 2", 1, 15, 1),
 
         spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         label2 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFYaw Jitter"),
@@ -1424,7 +1430,7 @@ local config_sys = {
     end),
 
     default_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFLoad Default  ", function() 
-        for k, v in pairs(json.parse(base64.decode("W3t9LHt9LHt9LFsxLDM1LC0yMiw4LCJTbG93IiwiR2FtZXNlbnNlIiw1OCx0cnVlLDAsIk9mZiIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLGZhbHNlLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEsMzcsLTI0LDIsIlNsb3ciLCJHYW1lc2Vuc2UiLDU4LHRydWUsMCwiT2ZmIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZBZGp1c3QgQm9keSBZYXciLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRllhdyBKaXR0ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkRlc3luYyIsdHJ1ZSwiICIsIiAiLCIgIiwiICIsIiAiLCIgIiw0LDM3LC0yOCwyLCJTbG93IiwiR2FtZXNlbnNlIiw1OCx0cnVlLDAsIk9mZiIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLHRydWUsIiAiLCIgIiwiICIsIiAiLCIgIiwiICIsMiwzNSwtMjQsMiwiU2xvdyIsIkdhbWVzZW5zZSIsNTgsdHJ1ZSwyNywiU3RvbXAiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIix0cnVlLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDQsLTIsMiw1LCJTbG93IiwiR2FtZXNlbnNlIiw1OCx0cnVlLDM2LCJTdG9tcCIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLHRydWUsIiAiLCIgIiwiICIsIiAiLCIgIiwiICIsMSwzNSwtMjIsNiwiU2xvdyIsIkdhbWVzZW5zZSIsNTgsdHJ1ZSwwLCJPZmYiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIix0cnVlLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEsMzEsLTMyLDE1LCJTbG93IiwiR2FtZXNlbnNlIiw1OCx0cnVlLDAsIk9mZiIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLHRydWUsIiAiLCIgIiwiICIsIiAiLCIgIiwiICJdLHt9XQ=="))) do
+        for k, v in pairs(json.parse(base64.decode("W3t9LHt9LHt9LFsxLDIsMSwzMiwtMjUsMTMsIlNsb3ciLCJHYW1lc2Vuc2UiLDAsdHJ1ZSwwLCJDZW50ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIixmYWxzZSwiRG91YmxlIiwiICIsIiAiLCIgIiwiICIsIiAiLCIgIiwyLDEsMiwyLDM2LC0yNSwxMywiU2xvdyIsIkdhbWVzZW5zZSIsMCxmYWxzZSwwLCJDZW50ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIixmYWxzZSwiU2luZ2xlIiwiICIsIiAiLCIgIiwiICIsIiAiLCIgIiwxMCwxLDIsMiwzNiwtMjUsMTMsIlNsb3ciLCJHYW1lc2Vuc2UiLDAsZmFsc2UsMCwiQ2VudGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZBZGp1c3QgQm9keSBZYXciLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRllhdyBKaXR0ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkRlc3luYyIsZmFsc2UsIlNpbmdsZSIsIiAiLCIgIiwiICIsIiAiLCIgIiwiICIsMTAsMSwyLDIsMzYsLTI1LDEzLCJTbG93IiwiR2FtZXNlbnNlIiwwLGZhbHNlLDAsIkNlbnRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLGZhbHNlLCJTaW5nbGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEwLDEsMiwyLDM2LC0yNSwxMywiU2xvdyIsIkdhbWVzZW5zZSIsMCxmYWxzZSwwLCJDZW50ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIixmYWxzZSwiU2luZ2xlIiwiICIsIiAiLCIgIiwiICIsIiAiLCIgIiwxMCwxLDIsMiwzNiwtMjUsMTMsIlNsb3ciLCJHYW1lc2Vuc2UiLDAsZmFsc2UsMCwiQ2VudGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZBZGp1c3QgQm9keSBZYXciLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRllhdyBKaXR0ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkRlc3luYyIsZmFsc2UsIlNpbmdsZSIsIiAiLCIgIiwiICIsIiAiLCIgIiwiICIsMTAsMSwyLDIsMzYsLTI1LDEzLCJTbG93IiwiR2FtZXNlbnNlIiwwLGZhbHNlLDAsIkNlbnRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLGZhbHNlLCJTaW5nbGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEwXSx7fV0="))) do
             k = ({[1] = "bools", [2] = "tables",[3] = "ints",[4] = "numbers"})[k]
             for k2, v2 in pairs(v) do
                 if (k == "bools") then
@@ -1543,16 +1549,22 @@ local function fix_antiaim_visibility()
     ui.set_visible(cond_select, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_type) == "Builder" and has_access)
     for i = 1, #states do
         local show_rad = ui.get(antiaim[i].body_movement) ~= "Default"
+        local is_timer_true = ui.get(antiaim[i].slow_type) == "Double" or ui.get(antiaim[i].slow_type) == "Unpredictive"
         local show_delay = ui.get(antiaim[i].body_movement) == "Slow" or ui.get(antiaim[i].body_movement) == "Evade"
         ui.set_visible(antiaim[i].ovr_state, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].spacer1, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].label1, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].body_movement, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].slow_type, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].switch_timer, is_timer_true and ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].spacer2, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].b_yaw, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].b_left, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and show_rad and has_access)
         ui.set_visible(antiaim[i].b_right, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and show_rad and has_access)
-        ui.set_visible(antiaim[i].b_delay, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and show_delay and has_access)
+        ui.set_visible(antiaim[i].b_delay, ui.get(antiaim[i].slow_type) == "Single" and ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and show_delay and has_access)
+        ui.set_visible(antiaim[i].b_delay1, ui.get(antiaim[i].slow_type) == "Double" and ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and show_delay and has_access)
+        ui.set_visible(antiaim[i].b_delay2, ui.get(antiaim[i].slow_type) == "Double" and ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and show_delay and has_access)
+        
 
         ui.set_visible(antiaim[i].spacer3, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].label2, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
@@ -2077,19 +2089,69 @@ local function aa_builder(arg)
         if arg.command_number % (ui.get(antiaim[state]["b_delay"])+1+1) == 1 then
             tbl.antiaim.ready = true
         end
-        if tbl.antiaim.ready and arg.chokedcommands == 0 then
-            local fake = (ui.get(antiaim[state]["fake"])+3) * 2
-            tbl.antiaim.ready = false
-            tbl.antiaim.evade_fake = not tbl.antiaim.evade_fake
-            ui.set(menu.body_yaw[2], tbl.antiaim.evade_fake and -fake or fake)
-
-            if tbl.antiaim.evade_fake then
-                ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_right"]) + ui.get(antiaim[state]["b_yaw"])))
-            else
-                ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_left"]) + ui.get(antiaim[state]["b_yaw"])))
+        if arg.command_number % (ui.get(antiaim[state]["switch_timer"])+1+1) > ui.get(antiaim[state]["switch_timer"]+1+1) then
+            if arg.command_number % (ui.get(antiaim[state]["b_delay1"])+1+1) == 1 then
+                tbl.antiaim.ready1 = true
             end
-
+        else
+            if arg.command_number % (ui.get(antiaim[state]["b_delay2"])+1+1) == 1 then
+                tbl.antiaim.ready1 = true
+            end
         end
+
+        if arg.command_number % (ui.get(antiaim[state]["switch_timer"])+1+1) * 3 > ui.get(antiaim[state]["switch_timer"]+1+1) * 3 then
+            if arg.command_number % math.random(2, 7) == 1 then
+                tbl.antiaim.ready2 = true
+            end
+        else
+            if arg.command_number % math.random(2, 7) == 1 then
+                tbl.antiaim.ready2 = true
+            end
+        end
+        
+        if ui.get(antiaim[state]["slow_type"]) == "Single" then
+            if tbl.antiaim.ready and arg.chokedcommands == 0 then
+                local fake = (ui.get(antiaim[state]["fake"])+3) * 2
+                tbl.antiaim.ready = false
+                tbl.antiaim.evade_fake = not tbl.antiaim.evade_fake
+                ui.set(menu.body_yaw[2], tbl.antiaim.evade_fake and -fake or fake)
+
+                if tbl.antiaim.evade_fake then
+                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_right"]) + ui.get(antiaim[state]["b_yaw"])))
+                else
+                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_left"]) + ui.get(antiaim[state]["b_yaw"])))
+                end
+
+            end
+        elseif ui.get(antiaim[state]["slow_type"]) == "Double" then
+            if tbl.antiaim.ready1 and arg.chokedcommands == 0 then
+                local fake = (ui.get(antiaim[state]["fake"])+3) * 2
+                tbl.antiaim.ready1 = false
+                tbl.antiaim.evade_fake = not tbl.antiaim.evade_fake
+                ui.set(menu.body_yaw[2], tbl.antiaim.evade_fake and -fake or fake)
+
+                if tbl.antiaim.evade_fake then
+                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_right"]) + ui.get(antiaim[state]["b_yaw"])))
+                else
+                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_left"]) + ui.get(antiaim[state]["b_yaw"])))
+                end
+            end
+        elseif ui.get(antiaim[state]["slow_type"]) == "Unpredictive" then
+            if tbl.antiaim.ready2 and arg.chokedcommands == 0 then
+                local fake = (ui.get(antiaim[state]["fake"])+3) * 2
+                tbl.antiaim.ready2 = false
+                tbl.antiaim.evade_fake = not tbl.antiaim.evade_fake
+                ui.set(menu.body_yaw[2], tbl.antiaim.evade_fake and -fake or fake)
+
+                if tbl.antiaim.evade_fake then
+                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_right"]) + ui.get(antiaim[state]["b_yaw"])))
+                else
+                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_left"]) + ui.get(antiaim[state]["b_yaw"])))
+                end
+            end
+        
+        end
+
 
     elseif ui.get(antiaim[state]["body_movement"]) == "Evade" then
 
