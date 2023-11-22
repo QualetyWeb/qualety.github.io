@@ -2940,5 +2940,3 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.visuals.logs,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
 end)
 
-
-
