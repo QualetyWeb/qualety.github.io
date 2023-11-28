@@ -384,7 +384,13 @@ local function fired_at(target, shooter, shot)
 
 end
 local tickshot = 0
-clamp = function(x) if x == nil then return 0 end x = (x % 360 + 360) % 360 return x > 180 and x - 360 or x end,
+clamp = function(x) 
+    if x == nil then 
+        return 0
+    end 
+    x = (x % 360 + 360) % 360 
+    return x > 180 and x - 360 or x 
+end,
 
 
 
@@ -592,13 +598,15 @@ local lua = {
 
         toggle = ui.new_checkbox("AA", "Anti-aimbot angles", "\aE8E8E8FFOverride \aBBC0F3FFDefensive \aE8E8E8FFAnti-aimbot"),
         spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-        def_conds = ui.new_multiselect("AA", "Anti-aimbot angles", "Conditions", {"Standing", "Air-Duck", "Air", "Running", "Duck", "Predict Visible", "Visible", "On Shot", "When Landing", "Unduck"}),
+        def_type = ui.new_combobox("AA", "Anti-aimbot angles", "Yaw Types", {"Desync", "Free-sync"}),
 
+
+        -- Desync
+        def_conds = ui.new_multiselect("AA", "Anti-aimbot angles", "Conditions", {"Standing", "Air-Duck", "Air", "Running", "Duck", "Predict Visible", "Visible", "On Shot", "When Landing", "Unduck"}),
         ignore_fs = ui.new_checkbox("AA", "Anti-aimbot angles", "Ignore freestanding"),
         spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-
         override_def = ui.new_multiselect("AA", "Anti-aimbot angles", "Override Anti-aim", {"Override Yaw", "Override Pitch"}),
-
+        freesync_updt = ui.new_checkbox("AA", "Anti-aimbot angles", "Use Free-Sync Updating", false),
         label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFYaw"),
         spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         yaw_type = ui.new_combobox("AA", "Anti-aimbot angles", "Yaw Types", {"Static", "Jitter", "Slow Jitter", "Spin", "Breaker"}),
@@ -622,10 +630,28 @@ local lua = {
         trigger_pitch = ui.new_slider("AA", "Anti-aimbot angles", "Trigger Angle", 1, 5, 1, true, "*", 1, {[1] = "Down", [2] = "Half Down", [3] = "Zero", [4] = "Half Up", [5] = "Up"}),
         unpred_flick = ui.new_checkbox("AA", "Anti-aimbot angles", "Unpredictive Flicks"),
 
+
+
         spacer5 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         label3 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFLag Switch"),
         spacer6 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         pause_time = ui.new_slider("AA", "Anti-aimbot angles", "Pause", 0, 100, 0, true, "t", 1, {[0] = "Disabled"}),
+
+
+
+        -- Free-Sync
+        freesync = {
+
+            conditions = ui.new_multiselect("AA", "Anti-aimbot angles", "Conditions", {"Jumping", "Lower Body Angles", "Smart"}),
+
+            yaw_type = ui.new_combobox("AA", "Anti-aimbot angles", "Yaw Type", {"Inherit Jitter", "Adaptive", "Custom (Static)", "Custom (Jitter)"}),
+            c_yaw_degree = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FFCustom \aE8E8E8FF Yaw", 0, 360, 0, true, "°"),
+            c_yaw_jitter_degree = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FFCustom \aE8E8E8FF Jitter", 1, 3, 2,true, "*", 1, {[1] = "Low", [2] = "Mid", [3] = "High"}),
+            
+            pitch_type = ui.new_combobox("AA", "Anti-aimbot angles", "Pitch Type", {"Inherit", "Adaptive", "Custom"}),
+            c_pitch_degree = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FFCustom \aE8E8E8FF Pitch", 1, 5, 1, true, "*", 1, {[1] = "Down", [2] = "Half Down", [3] = "Zero", [4] = "Half Up", [5] = "Up"}),
+        
+        },
     },
 
 
@@ -1525,6 +1551,7 @@ local function fix_antiaim_visibility()
     login_details.has_access = has_access
     local when_builder = ui.get(aa_type) == "Builder" and ui.get(aa_tabs) == "Anti-Aimbot"
     local when_preset = ui.get(aa_type) == "Presets" and ui.get(aa_tabs) == "Anti-Aimbot"
+    local sync_defensive_desync = ui.get(lua.def.def_type) == "Desync"
 
     ui.set_visible(config_sys.export_cfg, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
     ui.set_visible(config_sys.import_cfg, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
@@ -1580,40 +1607,54 @@ local function fix_antiaim_visibility()
         ui.set_visible(antiaim[i].spacer5, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
 
 
+
+        --DEFENSIVE MENU
         ui.set_visible(lua.def.toggle, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and has_access)
-        ui.set_visible(lua.def.spacer1, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.def_conds, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.ignore_fs, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.override_def, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.spacer2, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.label1, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.spacer3, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.yaw_type, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.yaw, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
-        ui.set_visible(lua.def.radius, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Spin" and ui.get(lua.def.yaw_type) ~= "Static" and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
-        ui.set_visible(lua.def.delay, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Jitter" and ui.get(lua.def.yaw_type) ~= "Static" and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
-        ui.set_visible(lua.def.spin_radius, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Spin" and has_access)
-        ui.set_visible(lua.def.spin_direction, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Spin" and has_access)
+        ui.set_visible(lua.def.spacer1, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and has_access)
+        ui.set_visible(lua.def.def_type, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and has_access and ui.get(lua.def.toggle))
+        ui.set_visible(lua.def.def_conds, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and sync_defensive_desync)
+        ui.set_visible(lua.def.ignore_fs, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and sync_defensive_desync)
+        ui.set_visible(lua.def.override_def, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and sync_defensive_desync)
+        ui.set_visible(lua.def.freesync_updt, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and sync_defensive_desync)
+        ui.set_visible(lua.def.spacer2, ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and sync_defensive_desync)
+        ui.set_visible(lua.def.label1, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.spacer3, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.yaw_type, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.yaw, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
+        ui.set_visible(lua.def.radius, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Spin" and ui.get(lua.def.yaw_type) ~= "Static" and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
+        ui.set_visible(lua.def.delay, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Jitter" and ui.get(lua.def.yaw_type) ~= "Static" and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
+        ui.set_visible(lua.def.spin_radius, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Spin" and has_access)
+        ui.set_visible(lua.def.spin_direction, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Spin" and has_access)
 
-        ui.set_visible(lua.def.breaker_sequence, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Breaker" and has_access)
-        ui.set_visible(lua.def.breaker_statement1, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Breaker" and has_access)
-        ui.set_visible(lua.def.breaker_statement2, getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Breaker" and has_access)
+        ui.set_visible(lua.def.breaker_sequence, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Breaker" and has_access)
+        ui.set_visible(lua.def.breaker_statement1, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Breaker" and has_access)
+        ui.set_visible(lua.def.breaker_statement2, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Breaker" and has_access)
 
-        ui.set_visible(lua.def.spacer3, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.label2, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.spacer4, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.variation, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.flick_type, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.flick_rate, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and ui.get(lua.def.flick_type) == "Custom")
-        ui.set_visible(lua.def.start_degree, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.trigger_pitch, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.unpred_flick, getcombo(lua.def.override_def, "Override Pitch") and  ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.spacer5, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.label3, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.spacer6, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.pause_time, getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.spacer3, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.label2, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.spacer4, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.variation, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.flick_type, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.flick_rate, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and ui.get(lua.def.flick_type) == "Custom")
+        ui.set_visible(lua.def.start_degree, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.trigger_pitch, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.unpred_flick, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and  ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.spacer5, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.label3, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.spacer6, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.pause_time, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
 
 
+        freesync_cust_stat = ui.get(lua.def.freesync.yaw_type) == "Custom (Jitter)" or ui.get(lua.def.freesync.yaw_type) == "Custom (Static)"
+        freesync_cust_jitt = ui.get(lua.def.freesync.yaw_type) == "Custom (Jitter)"
+        
+        ui.set_visible(lua.def.freesync.conditions, not sync_defensive_desync and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.freesync.yaw_type, not sync_defensive_desync and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.freesync.c_yaw_degree, not sync_defensive_desync and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and freesync_cust_stat)
+        ui.set_visible(lua.def.freesync.c_yaw_jitter_degree, not sync_defensive_desync and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and freesync_cust_jitt)
+        ui.set_visible(lua.def.freesync.pitch_type, not sync_defensive_desync and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.freesync.c_pitch_degree, not sync_defensive_desync and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and ui.get(lua.def.freesync.pitch_type) == "Custom")
+        
         ui.set_visible(antiaim[1].ovr_state, false)
     end
 
@@ -1689,16 +1730,27 @@ local def_vars = {
         cmd = 0,
         check = 0,
         defensive = 0,
-    }
-}
+    },
 
+    fs_istrue = false
+}
+local function height_to_pitch()
+    local enemy = client.current_threat()
+    local lp = entity.get_local_player()
+    if not lp or not entity.is_alive(lp) then
+        return
+    end
+
+
+
+end
 
 
 local function keep_updt()
     def_vars.is_true = false
+    def_vars.fs_istrue = false
     if entity.get_local_player() == nil then return end
     local lp = entity.get_local_player()
-    
 end
 local time_to_ticks = function(t)
     return math.floor(t / globals.tickinterval() + 0.5)
@@ -1944,12 +1996,24 @@ local function pre_prediction_logic()
         if vals_tbl[i] > 0 and getcombo(lua.def.def_conds, "Predict Visible") and c_dmg <= 0 then
             def_vars.is_true = true
         end
+
+        if vals_tbl[i] > 0 and getcombo(lua.def.freesync.conditions, "Smart") and c_dmg <= 0 then
+            def_vars.fs_istrue = true
+        end
+
+
     end
 
     if c_dmg > 0 and getcombo(lua.def.def_conds, "Visible") then
         def_vars.is_true = true
     end
 end
+
+
+
+
+
+
 
 
 local pre = {
@@ -2197,11 +2261,17 @@ end
 
 
 local def_states_table = {
-
     "Standing",
     "Air-Duck",
     "Air",
     "Running",
+    "Duck",
+}
+
+
+local new_def_table = {
+
+    "Air",
     "Duck",
 
 }
@@ -2249,7 +2319,7 @@ client.set_event_callback("predict_command", function(e)
 end)
 
 client.set_event_callback("level_init", function() def_vars.defensive.check, def_vars.defensive.defensive = 0, 0 end)
-
+local freesync_timer = 0
 local unpred_timer = 0
 local function defensive_logic(arg)
     local lp = entity.get_local_player()
@@ -2258,7 +2328,7 @@ local function defensive_logic(arg)
     end
     local weapon = entity.get_player_weapon(lp)
         
-    if not ui.get(lua.def.toggle) then return end
+    if not ui.get(lua.def.toggle) or not ui.get(lua.def.def_type) == "Desync" then return end
 
 
     local lag_timer = entity.get_prop(lp, "m_nTickbase") % ui.get(lua.def.pause_time) == 0
@@ -2323,8 +2393,18 @@ local function defensive_logic(arg)
 
 
         if ui.get(menu.doubletap[2]) then 
+            if ui.get(lua.def.freesync_updt) then
+                if freesync_timer < 10 then
+                    def_vars.is_true = false
+                end
+                if freesync_timer > 20 then
+                    freesync_timer = 0
+                end
+            end
             if def_vars.is_true == true and not ui.get(menu.fakeduck) then 
                 if getcombo(lua.def.override_def, "Override Yaw") then 
+
+
                     arg.force_defensive = true
 
                     if arg.chokedcommands > 1 then
@@ -2479,9 +2559,77 @@ local function defensive_logic(arg)
             end
         end 
     end
+end
 
+
+
+local function freesync_logic(arg)
+    if not ui.get(lua.def.toggle) or not ui.get(lua.def.def_type) == "Free-Sync" then return end
+
+    local air = bit.band(entity.get_prop(lp, "m_fFlags"), 1) == 0
+    local isDefensive = (def_vars.defensive.defensive > 1 and def_vars.defensive.defensive < 14)
+    local sv_tick = globals.tickcount()
+    local current_time = globals.realtime()
+    local pitch_variable = ((1 + math.cos((current_time - pre.start_time) * 40)) / 2) * 360
+    local slow_yaw_var = ((1 + math.cos((current_time - pre.start_time) * (ui.get(lua.def.delay) * 4))) / 2) * 30
+    local compensate_camera = client.camera_angles() - 360
+    local view_x, view_y, roll = client.camera_angles();
+    if arg.chokedcommands == 1 then
+        lp_choke = lp_choke + 1 * pre.multiplier
+    end
+    if lp_choke > 60 then
+        lp_choke = 0
+    end
+    
+    arg.force_defensive = true
+
+    if arg.chokedcommands > 1 then
+        arg.allow_send_packet = false
+    else
+        arg.allow_send_packet = true
+    end 
+    arg.force_defensive = globals.tickcount() % 3 ~= 1
+
+    if globals.chokedcommands() == 0 and setup_defensive.cycle == ui.get(lua.def.delay) then
+        delayed = false
+        setup_defensive.side = setup_defensive.side == 1 and 0 or 1
+    end
+
+    if get_player_state() == "Air" or get_player_state() == "Air-Duck" then
+        if getcombo(lua.def.freesync.conditions, "Jumping") then
+            def_vars.fs_istrue = true
+        end
+    end
+
+    if get_player_state() == "Duck" and getcombo(lua.def.freesync.conditions, "Lower Body Angles") then
+        def_vars.fs_istrue = true
+    end
+    if arg.chokedcommands == 1 then
+        freesync_timer = freesync_timer + 0.5
+    end
+
+    if freesync_timer < 10 then
+        def_vars.fs_istrue = false
+    end
+    if freesync_timer > 20 then
+        freesync_timer = 0
+    end
+
+    if isDefensive and def_vars.fs_istrue == true and arg.chokedcommands == 1 then
+        
+        ui.set(menu.yaw[2], math.random(0, 100) >= 50 and 120 or -120)
+        ui.set(menu.yaw_jitter[1], "Center")
+        ui.set(menu.yaw_jitter[2], 0)
+        ui.set(menu.body_yaw[1], "Off")
+        ui.set(menu.body_yaw[2], 1)
+        ui.set(menu.roll, 0)
+        ui.set(menu.pitch[1], "Custom")
+        ui.set(menu.pitch[2], -50)
+
+    end
 
 end
+
 
 local function disablers()
 
@@ -2820,6 +2968,7 @@ client.set_event_callback("setup_command", function(arg)
     presets(arg)
     aa_builder(arg)
     defensive_logic(arg)
+    freesync_logic(arg)
     disablers()
 end)
 
@@ -2939,4 +3088,6 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.visuals.other,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
     ui.set_visible(lua.visuals.logs,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
 end)
+
+
 
