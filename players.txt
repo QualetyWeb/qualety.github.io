@@ -610,7 +610,7 @@ local lua = {
         label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFYaw"),
         spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         yaw_type = ui.new_combobox("AA", "Anti-aimbot angles", "Yaw Types", {"Static", "Jitter", "Slow Jitter", "Spin", "Breaker"}),
-        yaw = ui.new_slider("AA", "Anti-aimbot angles", "Base Yaw", -100, 100, 0),
+        yaw = ui.new_slider("AA", "Anti-aimbot angles", "Base Yaw", -180, 180, 0),
         radius = ui.new_slider("AA", "Anti-aimbot angles", "Radius", -50, 50, 0),
         delay = ui.new_slider("AA", "Anti-aimbot angles", "Speed / Delay", 1, 10, 1),
         spin_radius = ui.new_slider("AA", "Anti-aimbot angles", "Radius", 0, 360, 0, true, "°"),
@@ -2566,7 +2566,7 @@ end
 local function freesync_logic(arg)
     if not ui.get(lua.def.toggle) or not ui.get(lua.def.def_type) == "Free-Sync" then return end
 
-    local air = bit.band(entity.get_prop(lp, "m_fFlags"), 1) == 0
+
     local isDefensive = (def_vars.defensive.defensive > 1 and def_vars.defensive.defensive < 14)
     local sv_tick = globals.tickcount()
     local current_time = globals.realtime()
