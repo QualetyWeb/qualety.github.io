@@ -521,7 +521,8 @@ states = {
     [7] = "Duck"
 }
 local aa_tabs = ui.new_combobox("AA", "Anti-aimbot angles", "Tabs", {"Anti-Aimbot", "Extra"})
-local aa_type = ui.new_combobox("AA", "Anti-aimbot angles", "Anti-Aim Type", {"None", "Presets", "Builder"})
+local aa_type = ui.new_combobox("AA", "Anti-aimbot angles", "Anti-Aim Type", {"None", "Presets", "Builder"}, "Builder")
+ui.set(aa_type, "Builder")
 
 
 
@@ -548,6 +549,7 @@ local lua = {
         spacer3 = ui.new_label("AA", "Other", " \n"),
         fs = ui.new_checkbox("AA", "Other", "\aBBC0F3FFFreestanding", {"Default"}),
         fs_key = ui.new_hotkey("AA", "Other", "\nFreestanding Bind", true),
+        sh_fs = ui.new_checkbox("AA", "Other", "\aBBC0F3FFSelf-Handling Freestand", {"Default"}),
         osaa = ui.new_checkbox("AA", "Other", "\aBBC0F3FFOn shot anti-aim", {"Default"}),
         osaa_key = ui.new_hotkey("AA", "Other", "\nOSAA BIND", true),
     },
@@ -1723,7 +1725,7 @@ local def_vars = {
     current_mag_amount = 0,
     correct_mag_timer = 0,
     jitter_switch = false,
-
+    selfhand_fs = false,
     slow_timer = 0, 
 
     defensive = {
@@ -1748,6 +1750,7 @@ end
 
 local function keep_updt()
     def_vars.is_true = false
+    def_vars.selfhand_fs = false
     def_vars.fs_istrue = false
     if entity.get_local_player() == nil then return end
     local lp = entity.get_local_player()
@@ -1992,10 +1995,16 @@ local function pre_prediction_logic()
 	end
 
     local vals_tbl = {l_dmg, r_dmg}
+    
     for i = 1, #vals_tbl do
         if vals_tbl[i] > 0 and getcombo(lua.def.def_conds, "Predict Visible") and c_dmg <= 0 then
             def_vars.is_true = true
         end
+        if vals_tbl[i] > 0 and c_dmg <= 0 then
+            def_vars.selfhand_fs = true
+        end
+
+
 
         if vals_tbl[i] > 0 and getcombo(lua.def.freesync.conditions, "Smart") and c_dmg <= 0 then
             def_vars.fs_istrue = true
@@ -2028,7 +2037,7 @@ local pre = {
 
 local lp_choke = 0
 
-local function presets(arg)
+local function Presets(arg)
     arg.force_defensive = false
     ui.set(menu.freestanding_body_yaw, false)
 
@@ -2109,7 +2118,7 @@ end
 
 
 
-local function aa_builder(arg)
+local function Builder(arg)
     if not ui.get(aa_type) == "Builder" then return end
     local lp = entity.get_local_player()
     local air = bit.band(entity.get_prop(lp, "m_fFlags"), 1) == 0
@@ -2321,6 +2330,7 @@ end)
 client.set_event_callback("level_init", function() def_vars.defensive.check, def_vars.defensive.defensive = 0, 0 end)
 local freesync_timer = 0
 local unpred_timer = 0
+
 local function defensive_logic(arg)
     local lp = entity.get_local_player()
     if not lp or not entity.is_alive(lp) then
@@ -2633,7 +2643,18 @@ end
 
 local function disablers()
 
-    
+    if ui.get(aa_type) == "None" then
+        ui.set(menu.yaw[2], 0)
+        ui.set(menu.yaw_jitter[1], "Center")
+        ui.set(menu.yaw_jitter[2], 0)
+        ui.set(menu.body_yaw[1], "Off")
+        ui.set(menu.body_yaw[2], 1)
+        ui.set(menu.roll, 0)
+        ui.set(menu.pitch[1], "Custom")
+        ui.set(menu.pitch[2], 89)
+    end
+
+
 
     if ui.get(lua.home.fs_key) and ui.get(lua.home.fs) then
         ui.set(menu.freestand[1], ui.get(lua.home.fs))
@@ -2651,7 +2672,10 @@ local function disablers()
         ui.set(menu.freestand[2], "On hotkey")
     end
 
-
+    if ui.get(lua.home.sh_fs) and def_vars.selfhand_fs == true then
+        ui.set(menu.freestand[1], true)
+        ui.set(menu.freestand[2], "Always On")
+    end
 
     if ui.get(lua.home.osaa_key) and ui.get(lua.home.osaa) then
         ui.set(menu.onshot[1], ui.get(lua.home.osaa))
@@ -2660,6 +2684,8 @@ local function disablers()
         ui.set(menu.onshot[1], false)
         ui.set(menu.onshot[2], "On hotkey")
     end
+
+
 
 
 end
@@ -2722,7 +2748,7 @@ local function indicators()
 
         },
         render_strings = {
-            "EVADE  ",
+            "E V A D E  ",
             get_build.." ",
         },
         anims = {
@@ -2748,7 +2774,9 @@ local function indicators()
     }
 
 
-
+    if def_vars.selfhand_fs == true and ui.get(lua.home.sh_fs) then
+        renderer.text(screen_x + anim1, screen_y - 15, 255, 255, 255, 255 - nade_alpha , "cb", nil, "FREESTAND")
+    end
 
 
     for i = 1, #vis_tables.nades do 
@@ -2799,7 +2827,7 @@ local function indicators()
         end
     elseif ui.get(lua.visuals.crosshair) == "Modern" then
 
-        local packed_text = animate_text(globals.curtime(), "  "..string.lower(vis_tables.render_strings[1])..string.lower(string.sub(vis_tables.render_strings[2], 1, (renderer.measure_text(vis_tables.render_strings[2]) - 2))), vis_tables.cols.crosshair[1], vis_tables.cols.crosshair[2], vis_tables.cols.crosshair[3], vis_tables.cols.crosshair[4] - nade_alpha)
+        local packed_text = animate_text(globals.curtime(), "  "..string.upper(vis_tables.render_strings[1]), vis_tables.cols.crosshair[1], vis_tables.cols.crosshair[2], vis_tables.cols.crosshair[3], vis_tables.cols.crosshair[4] - nade_alpha)
         if m_bIsScoped then
             if scope_anim < 30 then
                 scope_anim = scope_anim + 4
@@ -2809,8 +2837,8 @@ local function indicators()
                 scope_anim = scope_anim - 4
             end
         end
-        renderer.text(screen_x + scope_anim + 3, screen_y + 24, vis_tables.cols.crosshair[1], vis_tables.cols.crosshair[2], vis_tables.cols.crosshair[3], vis_tables.cols.crosshair[4] - nade_alpha, "cd", nil, "⋆゜✧*̣̩☽⋆゜⋆")
-        renderer.text(screen_x + scope_anim, screen_y + 36, 255, 255, 255, 255, "cd", nil, unpack(packed_text))
+        renderer.text(screen_x + scope_anim + 3, screen_y + 24, vis_tables.cols.crosshair[1], vis_tables.cols.crosshair[2], vis_tables.cols.crosshair[3], vis_tables.cols.crosshair[4] - nade_alpha, "cd", nil, ".𖥔 ݁ ˖")
+        renderer.text(screen_x + scope_anim + 1, screen_y + 36, 255, 255, 255, 255, "cb", nil, unpack(packed_text))
         local dt_charger = isCharged and "d" or ""
 
         if ui.get(menu.doubletap[2]) then
@@ -2820,14 +2848,14 @@ local function indicators()
                 anims.dt = anims.dt + 1
             end
 
-            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.dt, not isCharged and 255 or 210, isCharged and 255 or 180, 180, math.min(255 - nade_alpha, anims.dt * 17), "cd", nil, "charge"..dt_charger)
+            renderer.text(screen_x + scope_anim + 1, screen_y + 53 + vis_tables.adder.dst - anims.dt, not isCharged and 255 or 210, isCharged and 255 or 180, 180, math.min(255 - nade_alpha, anims.dt * 17), "cd", nil, "charge"..dt_charger)
 
         else
             
             if anims.dt > 0 then
                 anims.dt = anims.dt - 1
             end
-            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.dt, not isCharged and 255 or 210, isCharged and 255 or 180, 180, math.min(255 - nade_alpha, anims.dt * 17), "cd", nil, "charge"..dt_charger)
+            renderer.text(screen_x + scope_anim + 1, screen_y + 53 + vis_tables.adder.dst - anims.dt, not isCharged and 255 or 210, isCharged and 255 or 180, 180, math.min(255 - nade_alpha, anims.dt * 17), "cd", nil, "charge"..dt_charger)
         end
 
         if ui.get(menu.onshot[1]) then
@@ -2837,14 +2865,14 @@ local function indicators()
                 anims.osaa = anims.osaa + 1
             end
 
-            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.osaa, 255, 255, 255, math.min(255 - nade_alpha, anims.osaa * 17), "cd", nil, "osaa")
+            renderer.text(screen_x + scope_anim + 1, screen_y + 53 + vis_tables.adder.dst - anims.osaa, 255, 255, 255, math.min(255 - nade_alpha, anims.osaa * 17), "cd", nil, "osaa")
 
         else
             
             if anims.osaa > 0 then
                 anims.osaa = anims.osaa - 1
             end
-            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.osaa, 255, 255, 255, math.min(255 - nade_alpha, anims.osaa * 17), "cd", nil, "osaa")
+            renderer.text(screen_x + scope_anim + 1, screen_y + 53 + vis_tables.adder.dst - anims.osaa, 255, 255, 255, math.min(255 - nade_alpha, anims.osaa * 17), "cd", nil, "osaa")
         end
 
         if ui.get(menu.freestand[2]) then
@@ -2854,14 +2882,14 @@ local function indicators()
                 anims.fs = anims.fs + 1
             end
 
-            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.fs, 255, 255, 255, math.min(255 - nade_alpha, anims.fs * 17), "cd", nil, "fs body")
+            renderer.text(screen_x + scope_anim + 1, screen_y + 53 + vis_tables.adder.dst - anims.fs, 255, 255, 255, math.min(255 - nade_alpha, anims.fs * 17), "cd", nil, "fs body")
 
         else
             
             if anims.fs > 0 then
                 anims.fs = anims.fs - 1
             end
-            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.fs, 255, 255, 255, math.min(255 - nade_alpha, anims.fs * 17), "cd", nil, "fs body")
+            renderer.text(screen_x + scope_anim + 1, screen_y + 53 + vis_tables.adder.dst - anims.fs, 255, 255, 255, math.min(255 - nade_alpha, anims.fs * 17), "cd", nil, "fs body")
         end
 
         if ui.get(menu.fakeduck) then
@@ -2871,14 +2899,14 @@ local function indicators()
                 anims.fd = anims.fd + 1
             end
 
-            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.fd, 255, 255, 255, math.min(255 - nade_alpha, anims.fd * 17), "cd", nil, "duck")
+            renderer.text(screen_x + scope_anim + 1, screen_y + 53 + vis_tables.adder.dst - anims.fd, 255, 255, 255, math.min(255 - nade_alpha, anims.fd * 17), "cd", nil, "duck")
 
         else
             
             if anims.fd > 0 then
                 anims.fd = anims.fd - 1
             end
-            renderer.text(screen_x + scope_anim + 3, screen_y + 50 + vis_tables.adder.dst - anims.fd, 255, 255, 255, math.min(255 - nade_alpha, anims.fd * 17), "cd", nil, "duck")
+            renderer.text(screen_x + scope_anim + 1, screen_y + 53 + vis_tables.adder.dst - anims.fd, 255, 255, 255, math.min(255 - nade_alpha, anims.fd * 17), "cd", nil, "duck")
         end
     end
 end
@@ -2965,8 +2993,12 @@ client.set_event_callback("setup_command", function(arg)
     ui.set(menu.ragebot_toggle, true)
     get_lc(arg)
     on_unduck()
-    presets(arg)
-    aa_builder(arg)
+    if ui.get(aa_type) == "Builder" then
+        Builder(arg)
+    end
+    if ui.get(aa_type) == "Presets" then
+        Presets(arg)
+    end
     defensive_logic(arg)
     freesync_logic(arg)
     disablers()
@@ -3088,6 +3120,3 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.visuals.other,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
     ui.set_visible(lua.visuals.logs,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
 end)
-
-
-
