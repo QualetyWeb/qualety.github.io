@@ -533,7 +533,7 @@ local lua = {
 
     home = {
         label1 = ui.new_label("AA", "Other", " \n"),
-        manager = ui.new_combobox("AA", "Other", "  \aBBC0F3FF➤ \aE8E8E8FFTab Manager", {"\aBBC0F3FF❓ \aE8E8E8FFInfo", "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot", "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA", "\aBBC0F3FF✎ \aE8E8E8FFVisuals", "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System"}),
+        manager = ui.new_combobox("AA", "Other", "  \aBBC0F3FF➤ \aE8E8E8FFTab Manager", {"\aBBC0F3FF❓ \aE8E8E8FFInfo", "\aF48080FF◉ \aE8E8E8FFRagebot", "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot", "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA", "\aBBC0F3FF✎ \aE8E8E8FFVisuals", "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System"}),
         
         spacer1 = ui.new_label("AA", "Other", " \n"),
         label2 = ui.new_label("AA", "Other", "ㅤ\aBBC0F3FF- \aB3B7DDE2User: \aE8E8E8FF".."unknown"),
@@ -620,6 +620,7 @@ local lua = {
         breaker_sequence = ui.new_combobox("AA", "Anti-aimbot angles", "Sequence Type", {"1 <-> 3", "1 >-< 3", "Unpure"}),
         breaker_statement1 = ui.new_slider("AA", "Anti-aimbot angles", "Statement #1", -30, 30, 0, true, "", 1, {[0] = "Invalid"}),
         breaker_statement2 = ui.new_slider("AA", "Anti-aimbot angles", "Statement #2 (Δ)", -30, 30, 0, true, "Δ", 1, {[0] = "Invalid"}),
+        disrupt_spin = ui.new_checkbox("AA", "Anti-aimbot angles", "Disrupt Spin", false),
 
 
         spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
@@ -628,8 +629,9 @@ local lua = {
         flick_type = ui.new_combobox("AA", "Anti-aimbot angles", "Pitch Type", {"Evade", "Custom"}),
         variation = ui.new_slider("AA", "Anti-aimbot angles", "Variation", 0, 50, 0, true, "°"),
         flick_rate = ui.new_slider("AA", "Anti-aimbot angles", "Flick Rate", 0, 50, 0),
-        start_degree = ui.new_slider("AA", "Anti-aimbot angles", "Base Angle", 1, 5, 1, true, "*", 1, {[1] = "Down", [2] = "Half Down", [3] = "Zero", [4] = "Half Up", [5] = "Up"}),
+        start_degree = ui.new_slider("AA", "Anti-aimbot angles", "Base Angle", 1, 6, 1, true, "*", 1, {[1] = "Down", [2] = "Half Down", [3] = "Zero", [4] = "Half Up", [5] = "Up", [6] = "Nod [Experiment]"}),
         trigger_pitch = ui.new_slider("AA", "Anti-aimbot angles", "Trigger Angle", 1, 5, 1, true, "*", 1, {[1] = "Down", [2] = "Half Down", [3] = "Zero", [4] = "Half Up", [5] = "Up"}),
+        nodspeed = ui.new_slider("AA", "Anti-aimbot angles", "Nod Speed", 1, 100, 10, true),
         unpred_flick = ui.new_checkbox("AA", "Anti-aimbot angles", "Unpredictive Flicks"),
 
 
@@ -1324,10 +1326,15 @@ for i, v in next, states do
         b_left = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Left", -100, 100, 0),
         b_right = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Right", -100, 100, 0),
         slow_type = ui.new_combobox("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FFSwitch Type", {"Single", "Double", "Unpredictive"}),
+        ghost = ui.new_combobox("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FFJitter Regularity", {"Normal", "Ghost"}),
         switch_timer = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Timer", 1, 15, 0),
         b_delay = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Delay", 1, 15, 1),
         b_delay1 = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Delay 1", 1, 15, 1),
         b_delay2 = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Delay 2", 1, 15, 1),
+
+        irregulization = ui.new_combobox("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FFShifting Yaw", {"Off", "Step", "Randomize"}),
+        left_irreg_amount = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Left Shift Amount", 1, 50, 1, true, "%", 1),
+        right_irreg_amount = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Right Shift Amount", 1, 50, 1, true, "%", 1),
 
         spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         label2 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFYaw Jitter"),
@@ -1515,6 +1522,7 @@ local config_sys = {
 
 
 
+
 if readfile("evade_autosave.txt") ~= nil then
     cfg_value = json.parse(readfile("evade_autosave.txt"))
     for k, v in pairs(cfg_value) do
@@ -1538,7 +1546,6 @@ if readfile("evade_autosave.txt") ~= nil then
         end
     end
 end
-
 
 
 
@@ -1584,7 +1591,11 @@ local function fix_antiaim_visibility()
         ui.set_visible(antiaim[i].spacer1, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].label1, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].body_movement, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
-        ui.set_visible(antiaim[i].slow_type, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
+        ui.set_visible(antiaim[i].slow_type, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access and  show_delay)
+        ui.set_visible(antiaim[i].ghost, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access and not show_delay and show_rad)
+        ui.set_visible(antiaim[i].irregulization, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access and show_rad)
+        ui.set_visible(antiaim[i].left_irreg_amount, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access and show_rad)
+        ui.set_visible(antiaim[i].right_irreg_amount, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access and show_rad)
         ui.set_visible(antiaim[i].switch_timer, is_timer_true and ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].spacer2, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].b_yaw, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
@@ -1627,6 +1638,7 @@ local function fix_antiaim_visibility()
         ui.set_visible(lua.def.delay, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Jitter" and ui.get(lua.def.yaw_type) ~= "Static" and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
         ui.set_visible(lua.def.spin_radius, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Spin" and has_access)
         ui.set_visible(lua.def.spin_direction, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Spin" and has_access)
+        ui.set_visible(lua.def.disrupt_spin, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Spin" and has_access)
 
         ui.set_visible(lua.def.breaker_sequence, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Breaker" and has_access)
         ui.set_visible(lua.def.breaker_statement1, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Breaker" and has_access)
@@ -1640,6 +1652,7 @@ local function fix_antiaim_visibility()
         ui.set_visible(lua.def.flick_rate, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and ui.get(lua.def.flick_type) == "Custom")
         ui.set_visible(lua.def.start_degree, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
         ui.set_visible(lua.def.trigger_pitch, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.nodspeed, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and ui.get(lua.def.start_degree) == 6)
         ui.set_visible(lua.def.unpred_flick, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and  ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
         ui.set_visible(lua.def.spacer5, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
         ui.set_visible(lua.def.label3, sync_defensive_desync and getcombo(lua.def.override_def, "Override Pitch") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
@@ -2046,7 +2059,9 @@ local function Presets(arg)
     end
 
     if not ui.get(aa_type) == "Presets" then return end
-    ui.set(menu.pitch[1], "Default")
+    ui.set(menu.pitch[2], 89)
+    ui.set(menu.pitch[1], "Custom")
+
 
     if ui.get(lua.preset.pre_type) == "Meta Jitter" then
         ui.set(menu.yaw[2], 12)
@@ -2115,16 +2130,21 @@ getstate = function(air, duck, speed, slowcheck)
 end
 
 
-
-
+local left_irreg = 0
+local right_irreg = 0
 
 local function Builder(arg)
     if not ui.get(aa_type) == "Builder" then return end
+    ui.set(menu.pitch[2], 89)
+    ui.set(menu.pitch[1], "Custom")
     local lp = entity.get_local_player()
     local air = bit.band(entity.get_prop(lp, "m_fFlags"), 1) == 0
     local xv, yv, zv = entity.get_prop(lp, "m_vecVelocity")
     local duck = (entity.get_prop(lp, "m_flDuckAmount") > 0.1)
     local team = (entity.get_prop(lp, "m_iTeamNum") == 2 and "t" or "ct")
+
+
+
 
     local real_state = getstate(arg.in_jump == 1 or air, duck, math.sqrt(xv*xv + yv*yv + zv*zv), (ui.get(menu.slowmotion[1]) and ui.get(menu.slowmotion[2])))
     local state = real_state
@@ -2137,6 +2157,26 @@ local function Builder(arg)
         arg.force_defensive = false
     end
 
+    if ui.get(antiaim[state]["irregulization"]) == "Step" then
+        if left_irreg < ui.get(antiaim[state]["left_irreg_amount"]) then
+            left_irreg = left_irreg + (0.75 + (ui.get(antiaim[state]["left_irreg_amount"]) * 0.05))
+        end
+
+        if left_irreg > ui.get(antiaim[state]["left_irreg_amount"]) then
+            left_irreg = 0
+        end
+
+        if right_irreg < ui.get(antiaim[state]["right_irreg_amount"]) then
+            right_irreg = right_irreg + (0.75 + (ui.get(antiaim[state]["right_irreg_amount"]) * 0.05))
+        end
+
+        if right_irreg > ui.get(antiaim[state]["right_irreg_amount"]) - 1 then
+            right_irreg = 0
+        end
+
+    end
+
+    --print("Left Irreg: "..left_irreg.." | Actual Get: "..ui.get(antiaim[state]["left_irreg_amount"]))
 
     if ui.get(antiaim[state]["body_movement"]) == "Default" then
         ui.set(menu.yaw[2], ui.get(antiaim[state]["b_yaw"]))
@@ -2148,10 +2188,10 @@ local function Builder(arg)
         end
         if math.max(-60, math.min(60, math.floor((entity.get_prop(lp,"m_flPoseParameter", 11) or 0)*120-60+0.5))) > 0 then
             ui.set(menu.body_yaw[2], -121)
-            ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_yaw"]) - (ui.get(antiaim[state]["b_left"]) * 1)))
+            ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_yaw"]) - (ui.get(antiaim[state]["b_left"]) * 1) + left_irreg))
         else
             ui.set(menu.body_yaw[2], 121)
-            ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_yaw"]) - (ui.get(antiaim[state]["b_right"]) * 1)))
+            ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_yaw"]) - (ui.get(antiaim[state]["b_right"]) * 1) + right_irreg))
         end
 
     elseif ui.get(antiaim[state]["body_movement"]) == "Slow" then
@@ -2190,9 +2230,9 @@ local function Builder(arg)
                 ui.set(menu.body_yaw[2], tbl.antiaim.evade_fake and -fake or fake)
 
                 if tbl.antiaim.evade_fake then
-                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_right"]) + ui.get(antiaim[state]["b_yaw"])))
+                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_right"]) + ui.get(antiaim[state]["b_yaw"]) + right_irreg))
                 else
-                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_left"]) + ui.get(antiaim[state]["b_yaw"])))
+                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_left"]) + ui.get(antiaim[state]["b_yaw"]) + left_irreg))
                 end
 
             end
@@ -2204,9 +2244,9 @@ local function Builder(arg)
                 ui.set(menu.body_yaw[2], tbl.antiaim.evade_fake and -fake or fake)
 
                 if tbl.antiaim.evade_fake then
-                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_right"]) + ui.get(antiaim[state]["b_yaw"])))
+                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_right"]) + ui.get(antiaim[state]["b_yaw"]) + right_irreg))
                 else
-                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_left"]) + ui.get(antiaim[state]["b_yaw"])))
+                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_left"]) + ui.get(antiaim[state]["b_yaw"]) + left_irreg))
                 end
             end
         elseif ui.get(antiaim[state]["slow_type"]) == "Unpredictive" then
@@ -2217,9 +2257,9 @@ local function Builder(arg)
                 ui.set(menu.body_yaw[2], tbl.antiaim.evade_fake and -fake or fake)
 
                 if tbl.antiaim.evade_fake then
-                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_right"]) + ui.get(antiaim[state]["b_yaw"])))
+                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_right"]) + ui.get(antiaim[state]["b_yaw"]) + right_irreg))
                 else
-                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_left"]) + ui.get(antiaim[state]["b_yaw"])))
+                    ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_left"]) + ui.get(antiaim[state]["b_yaw"]) + left_irreg))
                 end
             end
         
@@ -2239,9 +2279,9 @@ local function Builder(arg)
             ui.set(menu.body_yaw[2], tbl.antiaim.evade_fake and -fake or fake)
 
             if tbl.antiaim.evade_fake then
-                ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_right"]) + ui.get(antiaim[state]["b_yaw"])))
+                ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_right"]) + ui.get(antiaim[state]["b_yaw"]) + right_irreg))
             else
-                ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_left"]) + ui.get(antiaim[state]["b_yaw"])))
+                ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_left"]) + ui.get(antiaim[state]["b_yaw"]) + left_irreg))
             end
         end
     end
@@ -2296,10 +2336,14 @@ local pitch_str = {
     45,
     0, 
     -45,
-    -89
+    -89,
+    88
 }
-
+client.set_event_callback("pre_config_load", function(e)
+    client.reload_active_scripts(true)
+end)
 client.set_event_callback("run_command", function(e)
+
     keep_updt()
     pre_prediction_logic()
     func_timer()
@@ -2326,7 +2370,7 @@ client.set_event_callback("predict_command", function(e)
         def_vars.defensive.cmd = 0
     end
 end)
-
+local pitchnod_func = 0
 client.set_event_callback("level_init", function() def_vars.defensive.check, def_vars.defensive.defensive = 0, 0 end)
 local freesync_timer = 0
 local unpred_timer = 0
@@ -2386,6 +2430,14 @@ local function defensive_logic(arg)
         yaw_val = (-def_vars.set_loop + def_vars.spin_fix / 2)
     end
 
+    if ui.get(lua.def.disrupt_spin) then
+        local aut_test = math.random(1, 20)
+        if aut_test <= 10 then
+            yaw_val = (-def_vars.set_loop + def_vars.spin_fix / 2)
+        else
+            yaw_val = (def_vars.set_loop - def_vars.spin_fix / 2)
+        end
+    end
 
 
     if ui.get(lua.def.spin_radius) < 230 then
@@ -2470,7 +2522,7 @@ local function defensive_logic(arg)
                         elseif ui.get(lua.def.breaker_sequence) == "1 >-< 3" then
                             local sequence = {1, 2, 0, 1, 2, 0, 2, 1, 0, 2, 1, 0, 2, 1, 0}
                         else
-                            local sequence = {0, 0, 1, 1, 2, 1, 0, 0, 2, 2, 2, 0, 1, 1, 0, 1, 2, 1, 0, 0, 2, 1, 1}
+                            local sequence = {0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1,}
                         end
                         local next_side
                         if setup_defensive.side_counter == #sequence then
@@ -2482,15 +2534,17 @@ local function defensive_logic(arg)
                         next_side = sequence[setup_defensive.side_counter]
         
                         side = next_side
-
+                        if ui.get(lua.def.breaker_sequence) == "Unpure" then
+                            next_side = math.random(-1, 6)
+                        end
         
                         if next_side == 0 then
                             setup_defensive.yaw = setup_defensive.yaw - 16 - math.abs(ui.get(lua.def.breaker_statement2)) - math.exp(math.abs(ui.get(lua.def.breaker_statement1)))
-                        elseif next_side == 1 then
+                        elseif next_side == 1 or nextside == 6 then
                             setup_defensive.yaw = setup_defensive.yaw + 16 + math.abs(ui.get(lua.def.breaker_statement2)) + math.exp(math.abs(ui.get(lua.def.breaker_statement1)))
                         end
 
-                        ui.set(menu.yaw[2], clamp(math.min(math.random(-14, 55))))
+
                         if isDefensive then
                             ui.set(menu.yaw[2], func.normalize(math.min(setup_defensive.yaw)))
                         end
@@ -2520,11 +2574,14 @@ local function defensive_logic(arg)
                         ui.set(menu.pitch[1], "Custom")
                         ui.set(menu.pitch[2], pitch_str[ui.get(lua.def.start_degree)])
 
-
+                        local isptr = false
                         local exp_delay_ticks = time_to_ticks(ui.get(lua.def.flick_rate) / 10)
                         def_vars.exp_ticks = (def_vars.exp_ticks + 1) % (exp_delay_ticks + 1)
-                    
-                        
+
+                        if ui.get(menu.pitch[2], pitch_str[ui.get(lua.def.trigger_pitch)]) == 88 then
+                            isptr = true
+                        end
+
                         local exp_half_delay_ticks = math.floor(exp_delay_ticks / 2)
                         exp_switch = def_vars.exp_ticks < exp_half_delay_ticks
                         if def_vars.pitch_variation < 50 then
@@ -2535,6 +2592,15 @@ local function defensive_logic(arg)
                             def_vars.pitch_variation = 0
                         end
 
+                        
+
+                        if pitchnod_func > -88 then 
+                            pitchnod_func = pitchnod_func - ui.get(lua.def.nodspeed) / 100
+                        end
+
+                        if pitchnod_func < -80 then
+                            pitchnod_func = 89
+                        end
                         if ui.get(lua.def.flick_type) == "Evade" then
                             if isDefensive then
                                 ui.set(menu.pitch[2], pitch_str[ui.get(lua.def.trigger_pitch)])
@@ -2543,8 +2609,10 @@ local function defensive_logic(arg)
                         else
                             if isDefensive then
                                 if exp_switch == false and ui.get(lua.def.flick_rate) ~= 0 then
+           
                                     ui.set(menu.pitch[2], pitch_str[ui.get(lua.def.trigger_pitch)])
                                     ui.set(menu.pitch[1], "Custom")
+        
                                 end
                             end
                         end
@@ -2563,6 +2631,10 @@ local function defensive_logic(arg)
                                     unpred_timer = 0
                                 end
                             end
+                        end
+                        if isDefensive and isptr == true then
+
+                            ui.set(menu.pitch[2], pitchnod_func)
                         end
                     end
                 end
@@ -3120,3 +3192,4 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.visuals.other,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
     ui.set_visible(lua.visuals.logs,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
 end)
+
