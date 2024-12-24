@@ -1491,31 +1491,7 @@ local config_sys = {
 
     spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
 
-    auto_save = ui.new_button("AA", "Anti-aimbot angles", "\aE8E8E8FFPush current settings on \aBBC0F3FFload", function()
-        local cfg = {}
 
-        local Code = {{},{},{},{},{}}
-		for _, bools in pairs(data.bools) do
-			table.insert(Code[1], ui.get(bools))
-		end
-		
-		for _, tables in pairs(data.tables) do
-			table.insert(Code[2], ui.get(tables))
-		end
-		
-		for _, ints in pairs(data.ints) do
-			table.insert(Code[3], ui.get(ints))
-		end
-		
-		for _, numbers in pairs(data.numbers) do
-			table.insert(Code[4], ui.get(numbers))
-		end
-        local stringed = json.stringify(Code)
-        writefile("evade_autosave.txt", stringed)
-
-
-        notify.new_bottom(255, 255, 255, {{"Pushed current settings to "}, {"\"on-load\"", true}, {"!"}})
-    end)
 
 }
 
@@ -1523,29 +1499,6 @@ local config_sys = {
 
 
 
-if readfile("evade_autosave.txt") ~= nil then
-    cfg_value = json.parse(readfile("evade_autosave.txt"))
-    for k, v in pairs(cfg_value) do
-        k = ({[1] = "bools", [2] = "tables",[3] = "ints",[4] = "numbers"})[k]
-        for k2, v2 in pairs(v) do
-            if (k == "bools") then
-                ui.set(data[k][k2], v2)
-            end
-
-            if (k == "tables") then
-                ui.set(data[k][k2], v2)
-            end
-
-            if (k == "ints") then
-                ui.set(data[k][k2], v2)
-            end
-
-            if (k == "numbers") then
-                ui.set(data[k][k2], v2)
-            end
-        end
-    end
-end
 
 
 
@@ -1568,7 +1521,7 @@ local function fix_antiaim_visibility()
     ui.set_visible(config_sys.spacer1, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
     ui.set_visible(config_sys.spacer2, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
     ui.set_visible(config_sys.label1, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
-    ui.set_visible(config_sys.auto_save, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
+    
 
     ui.set_visible(lua.preset.label1, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset and has_access)
     ui.set_visible(lua.preset.spacer1, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset and has_access)
@@ -2173,6 +2126,12 @@ local function Builder(arg)
         if right_irreg > ui.get(antiaim[state]["right_irreg_amount"]) - 1 then
             right_irreg = 0
         end
+
+    elseif ui.get(antiaim[state]["irregulization"]) == "Randomize" then
+
+        left_irreg = math.random(1, ui.get(antiaim[state]["left_irreg_amount"]))
+
+        right_irreg = math.random(1, ui.get(antiaim[state]["right_irreg_amount"]))
 
     end
 
@@ -3077,11 +3036,104 @@ client.set_event_callback("setup_command", function(arg)
 end)
 
 
+
+
+auto_save = ui.new_button("AA", "Anti-aimbot angles", "\aE8E8E8FFPush current settings on \aBBC0F3FFload", function()
+    local cfg = {}
+
+    local Code = {{},{},{},{},{}}
+    for _, bools in pairs(data.bools) do
+        table.insert(Code[1], ui.get(bools))
+    end
+    
+    for _, tables in pairs(data.tables) do
+        table.insert(Code[2], ui.get(tables))
+    end
+    
+    for _, ints in pairs(data.ints) do
+        table.insert(Code[3], ui.get(ints))
+    end
+    
+    for _, numbers in pairs(data.numbers) do
+        table.insert(Code[4], ui.get(numbers))
+    end
+    local stringed = json.stringify(Code)
+    writefile("evade_autosave.txt", stringed)
+
+
+    notify.new_bottom(255, 255, 255, {{"Pushed current settings to "}, {"\"on-load\"", true}, {"!"}})
+end)
+
+client.set_event_callback("console_input", function(text)
+
+    
+    if text == "load" then
+
+        if readfile("evade_autosave.txt") ~= nil then
+            cfg_value = json.parse(readfile("evade_autosave.txt"))
+            for k, v in pairs(cfg_value) do
+                k = ({[1] = "bools", [2] = "tables",[3] = "ints",[4] = "numbers"})[k]
+                for k2, v2 in pairs(v) do
+                    if (k == "bools") then
+                        ui.set(data[k][k2], v2)
+                    end
+        
+                    if (k == "tables") then
+                        ui.set(data[k][k2], v2)
+                    end
+        
+                    if (k == "ints") then
+                        ui.set(data[k][k2], v2)
+                    end
+        
+                    if (k == "numbers") then
+                        ui.set(data[k][k2], v2)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+
+if readfile("evade_autosave.txt") ~= nil then
+    cfg_value = json.parse(readfile("evade_autosave.txt"))
+    for k, v in pairs(cfg_value) do
+        k = ({[1] = "bools", [2] = "tables",[3] = "ints",[4] = "numbers"})[k]
+        for k2, v2 in pairs(v) do
+            if (k == "bools") then
+                ui.set(data[k][k2], v2)
+            end
+
+            if (k == "tables") then
+                ui.set(data[k][k2], v2)
+            end
+
+            if (k == "ints") then
+                ui.set(data[k][k2], v2)
+            end
+
+            if (k == "numbers") then
+                ui.set(data[k][k2], v2)
+            end
+        end
+    end
+end
+
+
+
+
+
 client.set_event_callback("paint_ui", function()
     ui.set(menu.enabled, true)
     on_load()
     db_load()
     local has_access = login_details.access == true
+
+    ui.set_visible(auto_save, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
+
 
     ui.set_visible(login_menu.no_access_msg1, login_details.access == false and login_details.is_registered == true)
     ui.set_visible(login_menu.login_spacer, login_details.access == false and login_details.is_registered == true)
@@ -3192,4 +3244,8 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.visuals.other,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
     ui.set_visible(lua.visuals.logs,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
 end)
+
+
+
+
 
