@@ -102,7 +102,8 @@ tbl.antiaim = {
         tick = 0,
     },
 
-    exact_pi = 0
+    exact_pi = 0,
+    is_antiknife = false
 }
 
 
@@ -238,6 +239,7 @@ local play_data = {
     hours = 0,
     hits = 0,
     misses = 0,
+    hm_ratio = 0,
     ticks_elapsed = 0
 }
 
@@ -594,6 +596,24 @@ local lua = {
         right = ui.new_slider("AA", "Anti-aimbot angles", "Right", -100, 100, 0),
         delay = ui.new_slider("AA", "Anti-aimbot angles", "Delay", 1, 10, 1),
         force_def = ui.new_checkbox("AA", "Anti-aimbot angles", "\aE8E8E8FFForce\aBBC0F3FF Defensive \aE8E8E8FFon presets"),
+    },
+    
+    aa_additions = {
+
+        additions = ui.new_multiselect("AA", "Anti-aimbot angles", "Anti-aim Additions", {"Anti-Shank", "Hide Head", "Manual Anti-aim", "Select Jitter", "Custom Freestanding", "Manipulate Tickbase"}),
+
+        hidehead_drop = ui.new_multiselect("AA", "Anti-aimbot angles", "Hide head conditions", {"Height Advantage", "On Knife", "On Zeus"}),
+
+        --Manuals
+        leftlabel = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFLeft \aE8E8E8FF Manual\aBBC0F3FF ↰"),
+        lefthotkey = ui.new_hotkey("AA", "Anti-aimbot angles", "\nBind", true),
+        rightlabel = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFRight \aE8E8E8FF Manual\aBBC0F3FF ↱"),
+        righthotkey = ui.new_hotkey("AA", "Anti-aimbot angles", "\nBind", true),
+        forwardlabel = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFForward \aE8E8E8FF Manual\aBBC0F3FF ↑"),
+        forwardhotkey = ui.new_hotkey("AA", "Anti-aimbot angles", "\nBind", true),
+        resetlabel = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFReset \aE8E8E8FF Manual\aBBC0F3FF ↻"),
+        resethotkey = ui.new_hotkey("AA", "Anti-aimbot angles", "\nBind", true),
+
     },
 
     def = {
@@ -1025,13 +1045,16 @@ local func = {
         local flags = entity.get_prop(localplayer, 'm_fFlags');
     end,
 
-    normalize = function(angle)
-        angle =  angle % 359.9 
-        angle = (angle + 359.9) % 359.9
-        if (angle >= 180)  then
-            angle = angle - 360
+    normalize = function(a)
+        while a > 180 do
+            a = a - 360
         end
-        return angle
+
+        while a < -180 do
+            a = a + 360
+        end
+
+        return a
     end,
 
 
@@ -1260,16 +1283,17 @@ local db_load = function()
 
     local total_shots = (play_data.misses + play_data.hits)
 
-    local acc_var = math.floor((play_data.hits / total_shots) * 100)
+    play_data.hm_ratio = math.floor((play_data.hits / total_shots) * 100)
 
     if total_shots == 0 then
-        acc_var = 100
+        play_data.hm_ratio = 100
     end
+
     local get_loadtimes = database.read("evade_stats") ~= nil and database.read("evade_stats") or "unknown"
     ui.set(lua.info.times_loaded, "\aFFFFFFFF~ \aBBC0F3FFTimes Loaded: \aE8E8E8FF "..loadCount)
     ui.set(lua.info.hits, "\aFFFFFFFF~ \aBBC0F3FFHits: \aE8E8E8FF "..play_data.hits)
     ui.set(lua.info.misses, "\aFFFFFFFF~ \aBBC0F3FFMisses: \aE8E8E8FF "..play_data.misses)
-    ui.set(lua.info.accuracy, "\aFFFFFFFF~ \aBBC0F3FFShot Accuracy: \aE8E8E8FF "..acc_var.."%")
+    ui.set(lua.info.accuracy, "\aFFFFFFFF~ \aBBC0F3FFShot Accuracy: \aE8E8E8FF "..play_data.hm_ratio.."%")
 
     ui.set(lua.info.times_missed, "\aFFFFFFFF~ \aBBC0F3FFEnemy Misses: \aE8E8E8FF "..new_tbl.miss)
     ui.set(lua.info.times_hit, "\aFFFFFFFF~ \aBBC0F3FFEnemy Hits: \aE8E8E8FF "..new_tbl.hit)
@@ -1335,6 +1359,7 @@ for i, v in next, states do
         irregulization = ui.new_combobox("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FFShifting Yaw", {"Off", "Step", "Randomize"}),
         left_irreg_amount = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Left Shift Amount", 1, 50, 1, true, "%", 1),
         right_irreg_amount = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Right Shift Amount", 1, 50, 1, true, "%", 1),
+        global_irreg_amount = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Right Shift Amount", 1, 50, 1, true, "%", 1),
 
         spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         label2 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFYaw Jitter"),
@@ -1540,15 +1565,30 @@ local function fix_antiaim_visibility()
         local show_rad = ui.get(antiaim[i].body_movement) ~= "Default"
         local is_timer_true = ui.get(antiaim[i].slow_type) == "Double" or ui.get(antiaim[i].slow_type) == "Unpredictive"
         local show_delay = ui.get(antiaim[i].body_movement) == "Slow" or ui.get(antiaim[i].body_movement) == "Evade"
+
+
+        ui.set_visible(lua.aa_additions.additions, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access)
+        ui.set_visible(lua.aa_additions.hidehead_drop, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Hide Head"))
+        ui.set_visible(lua.aa_additions.leftlabel, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
+        ui.set_visible(lua.aa_additions.lefthotkey, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
+        ui.set_visible(lua.aa_additions.rightlabel, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
+        ui.set_visible(lua.aa_additions.righthotkey, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
+        ui.set_visible(lua.aa_additions.forwardlabel, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
+        ui.set_visible(lua.aa_additions.forwardhotkey, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
+        ui.set_visible(lua.aa_additions.resetlabel, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
+        ui.set_visible(lua.aa_additions.resethotkey, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
+
+        ui.set_visible(cond_select, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].ovr_state, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].spacer1, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].label1, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].body_movement, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].slow_type, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access and  show_delay)
         ui.set_visible(antiaim[i].ghost, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access and not show_delay and show_rad)
-        ui.set_visible(antiaim[i].irregulization, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access and show_rad)
+        ui.set_visible(antiaim[i].irregulization, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].left_irreg_amount, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access and show_rad)
         ui.set_visible(antiaim[i].right_irreg_amount, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access and show_rad)
+        ui.set_visible(antiaim[i].global_irreg_amount, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access and not show_rad)
         ui.set_visible(antiaim[i].switch_timer, is_timer_true and ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].spacer2, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].b_yaw, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
@@ -1692,7 +1732,8 @@ local def_vars = {
     correct_mag_timer = 0,
     jitter_switch = false,
     selfhand_fs = false,
-    slow_timer = 0, 
+    slow_timer = 0,
+    closeenemy = "",
 
     defensive = {
         cmd = 0,
@@ -1961,7 +2002,7 @@ local function pre_prediction_logic()
 	end
 
     local vals_tbl = {l_dmg, r_dmg}
-    
+    def_vars.closeenemy = closestplayer
     for i = 1, #vals_tbl do
         if vals_tbl[i] > 0 and getcombo(lua.def.def_conds, "Predict Visible") and c_dmg <= 0 then
             def_vars.is_true = true
@@ -2085,6 +2126,7 @@ end
 
 local left_irreg = 0
 local right_irreg = 0
+local global_irreg = 0
 
 local function Builder(arg)
     if not ui.get(aa_type) == "Builder" then return end
@@ -2127,18 +2169,30 @@ local function Builder(arg)
             right_irreg = 0
         end
 
+        if global_irreg < ui.get(antiaim[state]["global_irreg_amount"]) then
+            global_irreg = global_irreg + (0.75 + (ui.get(antiaim[state]["global_irreg_amount"]) * 0.05))
+        end
+
+        if global_irreg > ui.get(antiaim[state]["global_irreg_amount"]) - 1 then
+            global_irreg = 0
+        end
+
     elseif ui.get(antiaim[state]["irregulization"]) == "Randomize" then
 
         left_irreg = math.random(1, ui.get(antiaim[state]["left_irreg_amount"]))
 
         right_irreg = math.random(1, ui.get(antiaim[state]["right_irreg_amount"]))
 
+        global_irreg = math.random(1, ui.get(antiaim[state]["global_irreg_amount"]))
+
     end
 
     --print("Left Irreg: "..left_irreg.." | Actual Get: "..ui.get(antiaim[state]["left_irreg_amount"]))
 
     if ui.get(antiaim[state]["body_movement"]) == "Default" then
-        ui.set(menu.yaw[2], ui.get(antiaim[state]["b_yaw"]))
+
+        ui.set(menu.yaw[2], ui.get(antiaim[state]["b_yaw"]) + global_irreg)
+
     elseif ui.get(antiaim[state]["body_movement"]) == "Jitter" then
         local yaw_body = entity.get_prop(lp, "m_flPoseParameter", 11) * 120 - 60 <= 0
         local body_value = false
@@ -2146,10 +2200,10 @@ local function Builder(arg)
             body_value = true
         end
         if math.max(-60, math.min(60, math.floor((entity.get_prop(lp,"m_flPoseParameter", 11) or 0)*120-60+0.5))) > 0 then
-            ui.set(menu.body_yaw[2], -121)
+            ui.set(menu.body_yaw[2], -1)
             ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_yaw"]) - (ui.get(antiaim[state]["b_left"]) * 1) + left_irreg))
         else
-            ui.set(menu.body_yaw[2], 121)
+            ui.set(menu.body_yaw[2], 1)
             ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_yaw"]) - (ui.get(antiaim[state]["b_right"]) * 1) + right_irreg))
         end
 
@@ -2258,6 +2312,10 @@ local function Builder(arg)
         ui.set(menu.yaw_jitter[1], "Center")
         ui.set(menu.yaw_jitter[2], (ui.get(antiaim[state]["j_rad"]) + math.random(1, 11)))
     end
+
+
+
+
 
 
 
@@ -2605,6 +2663,9 @@ end
 
 
 local function freesync_logic(arg)
+
+
+
     if not ui.get(lua.def.toggle) or not ui.get(lua.def.def_type) == "Free-Sync" then return end
 
 
@@ -2669,11 +2730,17 @@ local function freesync_logic(arg)
 
     end
 
+
+
+
+
+
+
 end
 
 
 local function disablers()
-
+    tbl.antiaim.is_antiknife = false
     if ui.get(aa_type) == "None" then
         ui.set(menu.yaw[2], 0)
         ui.set(menu.yaw_jitter[1], "Center")
@@ -2717,7 +2784,48 @@ local function disablers()
     end
 
 
+    ---------------------------------------
+    -- Anti-Aim Additions -----------------
+    ---------------------------------------
 
+    if getcombo(lua.aa_additions.additions, "Anti-Shank") then
+        local lp = entity.get_local_player()
+        if not lp or not entity.is_alive(lp) then
+            return
+        end
+        local my_origin = vector(entity.get_origin(lp))
+
+        local player_list = entity.get_players(true)
+        local player_cnt = #player_list
+
+        local closest_dist, closest_yaw = math.huge, nil
+
+        for i=1, player_cnt do
+            local ent = player_list[i]
+            local weapon = entity.get_player_weapon(ent)
+            local player_origin = vector(entity.hitbox_position(ent, 2))
+            local distance = my_origin:dist(player_origin)
+            --local visible = client.visible(player_origin:unpack())
+
+            if distance < 350 and weapon ~= nil then
+            local weapon_info = csgo_weapons(weapon)
+
+                if weapon_info.is_melee_weapon then
+                    if distance < closest_dist then
+                        local _, yaw_to_target = (player_origin - my_origin):angles()
+                        closest_yaw = yaw_to_target
+                        closest_dist = distance
+                    end
+                end
+            end
+        end
+
+        if closest_yaw then
+            ui.set(menu.yaw[2], 180)
+            ui.set(menu.yaw_base, "At targets")
+            tbl.antiaim.is_antiknife = true
+        end
+    end
 
 end
 local text_dst = 0
@@ -2725,7 +2833,8 @@ local text_spr = 8
 local anim1 = 0
 local scopeFrac
 local scope_anim = 0
-
+local debug_align_stat = 10
+local debug_align_multiplier = 0
 local anims = {
 
     dt = 0,
@@ -2735,9 +2844,20 @@ local anims = {
 
 }
 
-local function indicators()
+
+local debugconditions = {
+    "",
+    "standing",
+    "running",
+    "slow walking",
+    "jumping",
+    "duck jumping",
+    "crouching"
+}
+local function indicators(arg)
     local lp = entity.get_local_player()
-    
+    local debug_align_stat = 10
+    local debug_align_multiplier = 0
     local screensize = { client.screen_size() }
     local center = { screensize[1] / 2, screensize[2] / 2 }
     local screen_x = center[1]
@@ -2940,6 +3060,46 @@ local function indicators()
             renderer.text(screen_x + scope_anim + 1, screen_y + 53 + vis_tables.adder.dst - anims.fd, 255, 255, 255, math.min(255 - nade_alpha, anims.fd * 17), "cd", nil, "duck")
         end
     end
+
+
+    local weapon_info = csgo_weapons(weapon)
+    local air = bit.band(entity.get_prop(lp, "m_fFlags"), 1) == 0
+    local xv, yv, zv = entity.get_prop(lp, "m_vecVelocity")
+    local vvelocity = math.sqrt(xv * xv + yv * yv + zv * zv)
+    local duck = (entity.get_prop(lp, "m_flDuckAmount") > 0.1)
+    local team = (entity.get_prop(lp, "m_iTeamNum") == 2 and "t" or "ct")
+    local lp_hp = entity.get_prop(lp, 'm_iHealth')
+
+    vhits = play_data.hits
+    vmisses = play_data.misses
+
+    vperc = (vhits / vmisses) * 100
+
+    local players = get_all_players(true)
+
+    local real_state = getstate(air, duck, math.sqrt(xv*xv + yv*yv + zv*zv), (ui.get(menu.slowmotion[1]) and ui.get(menu.slowmotion[2])))
+    
+
+
+    renderer.text(screen_x * 1.5, screen_y / 2.7, 255, 255, 255, math.abs(1 * math.cos(2 * math.pi * globals.curtime() / 4)) * (220), nil, nil, "//debug panel - evade (debug)")
+    if anti_aim.get_tickbase_shifting() > 1 then
+        debug_align_multiplier = debug_align_multiplier + debug_align_stat
+        renderer.text(screen_x * 1.5, screen_y / 2.7 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "tickbase shifting: "..anti_aim.get_tickbase_shifting())
+    end
+    renderer.text(screen_x * 1.5, screen_y / 2.7 + 10 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "currect weapon type: "..weapon_info.type)
+    renderer.text(screen_x * 1.5, screen_y / 2.7 + 20 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "desync peak value: "..math.floor(anti_aim.get_desync(1)))
+    renderer.text(screen_x * 1.5, screen_y / 2.7 + 30 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "movement state: "..debugconditions[real_state])
+
+    if getcombo(lua.aa_additions.additions, "Anti-Shank") and tbl.antiaim.is_antiknife == true then
+        debug_align_multiplier = debug_align_multiplier + debug_align_stat
+        renderer.text(screen_x * 1.5, screen_y / 2.7 + 30 + debug_align_multiplier, 255, 180, 180, 220, nil, nil, "anti-shank active")
+    end
+
+    renderer.text(screen_x * 1.5, screen_y / 2.7 + 40 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "velocity: "..math.floor(vvelocity))
+    renderer.text(screen_x * 1.5, screen_y / 2.7 + 50 + debug_align_multiplier, lp_hp <= 92 and 255 or 200, lp_hp <= 92 and 180 or 255, lp_hp <= 92 and 180 or 200, 220, nil, nil, lp_hp <= 92 and "is local lethal: true" or "is local lethal: false")
+    renderer.text(screen_x * 1.5, screen_y / 2.7 + 60 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "hitratio: "..play_data.hm_ratio.."%")
+
+
 end
 
 local function debug_render()
