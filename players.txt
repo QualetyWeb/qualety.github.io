@@ -50,7 +50,7 @@ client.set_event_callback("paint_ui", function()
         hp_status = false
     end
 
-    print(tostring(new_tbl.old_hp..new_tbl.hp))
+
     ]]
 
 
@@ -380,7 +380,6 @@ local function fired_at(target, shooter, shot)
 
 
 
-   --print(hb1_shot)
     return (length < 69) and (frac_shot > 0.99 or frac_final > 0.99)
 
 
@@ -522,8 +521,9 @@ states = {
     [6] = "Air-Duck",
     [7] = "Duck"
 }
-local aa_tabs = ui.new_combobox("AA", "Anti-aimbot angles", "Tabs", {"Anti-Aimbot", "Extra"})
-local aa_type = ui.new_combobox("AA", "Anti-aimbot angles", "Anti-Aim Type", {"None", "Presets", "Builder"}, "Builder")
+local aa_tabs = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAnti\aE8E8E8FF-\aBBC0F3FFAim\aE8E8E8FF] ~\aE8E8E8FF Tabs", {"Anti-Aimbot", "Extra"})
+local firstlabel = ui.new_label("AA", "Anti-aimbot angles", "        ~~~~~~~~~~~~~~~~\n")
+local aa_type = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAnti\aE8E8E8FF-\aBBC0F3FFAim\aE8E8E8FF] ~\aE8E8E8FF Type", {"None", "Presets", "Builder"}, "Builder")
 ui.set(aa_type, "Builder")
 
 
@@ -535,7 +535,7 @@ local lua = {
 
     home = {
         label1 = ui.new_label("AA", "Other", " \n"),
-        manager = ui.new_combobox("AA", "Other", "  \aBBC0F3FF➤ \aE8E8E8FFTab Manager", {"\aBBC0F3FF❓ \aE8E8E8FFInfo", "\aF48080FF◉ \aE8E8E8FFRagebot", "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot", "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA", "\aBBC0F3FF✎ \aE8E8E8FFVisuals", "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System"}),
+        manager = ui.new_combobox("AA", "Other", "  \aBBC0F3FF➤ \aE8E8E8FFTab Manager", {"\aBBC0F3FF❓ \aE8E8E8FFInfo", "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot", "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA", "\aBBC0F3FF✎ \aE8E8E8FFVisuals", "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System"}),
         
         spacer1 = ui.new_label("AA", "Other", " \n"),
         label2 = ui.new_label("AA", "Other", "ㅤ\aBBC0F3FF- \aB3B7DDE2User: \aE8E8E8FF".."unknown"),
@@ -592,19 +592,19 @@ local lua = {
         spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         pre_type = ui.new_combobox("AA", "Anti-aimbot angles", "\n", {"Off", "Meta Jitter", "Delayed", "Evade Special"}),
         spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-        left = ui.new_slider("AA", "Anti-aimbot angles", "Left", -100, 100, 0),
-        right = ui.new_slider("AA", "Anti-aimbot angles", "Right", -100, 100, 0),
-        delay = ui.new_slider("AA", "Anti-aimbot angles", "Delay", 1, 10, 1),
+        left = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Left", -100, 100, 0),
+        right = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Right", -100, 100, 0),
+        delay = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Delay", 1, 10, 1),
         force_def = ui.new_checkbox("AA", "Anti-aimbot angles", "\aE8E8E8FFForce\aBBC0F3FF Defensive \aE8E8E8FFon presets"),
     },
     
     aa_additions = {
 
-        additions = ui.new_multiselect("AA", "Anti-aimbot angles", "Anti-aim Additions", {"Anti-Shank", "Hide Head", "Manual Anti-aim", "Select Jitter", "Custom Freestanding", "Manipulate Tickbase"}),
+        additions = ui.new_multiselect("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAnti\aE8E8E8FF-\aBBC0F3FFAim\aE8E8E8FF] ~\aE8E8E8FF Additions", {"Anti-Shank", "Hide Head", "Select Jitter", "Static Freestanding"}),
 
-        hidehead_drop = ui.new_multiselect("AA", "Anti-aimbot angles", "Hide head conditions", {"Height Advantage", "On Knife", "On Zeus"}),
-
-        --Manuals
+        hidehead_drop = ui.new_multiselect("AA", "Anti-aimbot angles", "Hide head conditions", {"On Knife", "On Zeus"}),
+        --[[
+        
         leftlabel = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFLeft \aE8E8E8FF Manual\aBBC0F3FF ↰"),
         lefthotkey = ui.new_hotkey("AA", "Anti-aimbot angles", "\nBind", true),
         rightlabel = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFRight \aE8E8E8FF Manual\aBBC0F3FF ↱"),
@@ -613,6 +613,10 @@ local lua = {
         forwardhotkey = ui.new_hotkey("AA", "Anti-aimbot angles", "\nBind", true),
         resetlabel = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFReset \aE8E8E8FF Manual\aBBC0F3FF ↻"),
         resethotkey = ui.new_hotkey("AA", "Anti-aimbot angles", "\nBind", true),
+        
+        ]]
+        --Manuals
+
 
     },
 
@@ -620,23 +624,23 @@ local lua = {
 
         toggle = ui.new_checkbox("AA", "Anti-aimbot angles", "\aE8E8E8FFOverride \aBBC0F3FFDefensive \aE8E8E8FFAnti-aimbot"),
         spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-        def_type = ui.new_combobox("AA", "Anti-aimbot angles", "Yaw Types", {"Desync", "Free-sync"}),
+        def_type = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Yaw Types", {"Desync", "Free-sync", "Experimental Yaw Flicks"}),
 
 
         -- Desync
-        def_conds = ui.new_multiselect("AA", "Anti-aimbot angles", "Conditions", {"Standing", "Air-Duck", "Air", "Running", "Duck", "Predict Visible", "Visible", "On Shot", "When Landing", "Unduck"}),
+        def_conds = ui.new_multiselect("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Conditions", {"Standing", "Air-Duck", "Air", "Running", "Duck", "Predict Visible", "Visible", "On Shot", "When Landing", "Unduck"}),
         ignore_fs = ui.new_checkbox("AA", "Anti-aimbot angles", "Ignore freestanding"),
         spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-        override_def = ui.new_multiselect("AA", "Anti-aimbot angles", "Override Anti-aim", {"Override Yaw", "Override Pitch"}),
+        override_def = ui.new_multiselect("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Overrides", {"Override Yaw", "Override Pitch"}),
         freesync_updt = ui.new_checkbox("AA", "Anti-aimbot angles", "Use Free-Sync Updating", false),
         label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFYaw"),
         spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-        yaw_type = ui.new_combobox("AA", "Anti-aimbot angles", "Yaw Types", {"Static", "Jitter", "Slow Jitter", "Spin", "Breaker"}),
-        yaw = ui.new_slider("AA", "Anti-aimbot angles", "Base Yaw", -180, 180, 0),
-        radius = ui.new_slider("AA", "Anti-aimbot angles", "Radius", -50, 50, 0),
-        delay = ui.new_slider("AA", "Anti-aimbot angles", "Speed / Delay", 1, 10, 1),
-        spin_radius = ui.new_slider("AA", "Anti-aimbot angles", "Radius", 0, 360, 0, true, "°"),
-        spin_direction = ui.new_slider("AA", "Anti-aimbot angles", "Direction", 1, 2, 1, true, "*", 1, {[1] = "Left", [2] = "Right"}),
+        yaw_type = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Yaw Types", {"Static", "Jitter", "Slow Jitter", "Spin", "Breaker"}),
+        yaw = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Base Yaw", -180, 180, 0),
+        radius = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Radius", -50, 50, 0),
+        delay = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Speed / Delay", 1, 10, 1),
+        spin_radius = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Radius", 0, 360, 0, true, "°"),
+        spin_direction = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Direction", 1, 2, 1, true, "*", 1, {[1] = "Left", [2] = "Right"}),
         breaker_sequence = ui.new_combobox("AA", "Anti-aimbot angles", "Sequence Type", {"1 <-> 3", "1 >-< 3", "Unpure"}),
         breaker_statement1 = ui.new_slider("AA", "Anti-aimbot angles", "Statement #1", -30, 30, 0, true, "", 1, {[0] = "Invalid"}),
         breaker_statement2 = ui.new_slider("AA", "Anti-aimbot angles", "Statement #2 (Δ)", -30, 30, 0, true, "Δ", 1, {[0] = "Invalid"}),
@@ -666,15 +670,29 @@ local lua = {
         -- Free-Sync
         freesync = {
 
-            conditions = ui.new_multiselect("AA", "Anti-aimbot angles", "Conditions", {"Jumping", "Lower Body Angles", "Smart"}),
+            conditions = ui.new_multiselect("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Conditions", {"Jumping", "Lower Body Angles", "Smart"}),
 
-            yaw_type = ui.new_combobox("AA", "Anti-aimbot angles", "Yaw Type", {"Inherit Jitter", "Adaptive", "Custom (Static)", "Custom (Jitter)"}),
+            yaw_type = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Yaw Type", {"Inherit Jitter", "Adaptive", "Custom (Static)", "Custom (Jitter)"}),
             c_yaw_degree = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FFCustom \aE8E8E8FF Yaw", 0, 360, 0, true, "°"),
             c_yaw_jitter_degree = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FFCustom \aE8E8E8FF Jitter", 1, 3, 2,true, "*", 1, {[1] = "Low", [2] = "Mid", [3] = "High"}),
             
-            pitch_type = ui.new_combobox("AA", "Anti-aimbot angles", "Pitch Type", {"Inherit", "Adaptive", "Custom"}),
+            pitch_type = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Pitch Type", {"Inherit", "Adaptive", "Custom"}),
             c_pitch_degree = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FFCustom \aE8E8E8FF Pitch", 1, 5, 1, true, "*", 1, {[1] = "Down", [2] = "Half Down", [3] = "Zero", [4] = "Half Up", [5] = "Up"}),
         
+        },
+
+        -- Flicking Exp...
+        flick = {
+            yp_drop = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFFlick\aE8E8E8FF] ~\aE8E8E8FF Overrides", {"Yaw", "Yaw & Pitch"}),
+            multiple_flicks = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFFlick\aE8E8E8FF] ~\aE8E8E8FF Ways", {"Single", "Double", "Random"}),
+            firstflick = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFFlick\aE8E8E8FF] ~\aE8E8E8FF Nr \aBBC0F3FF1", {"Left", "Right", "Custom"}),
+            first_custom_degree = ui.new_slider("AA", "Anti-aimbot angles", "Custom Nr \aBBC0F3FF1", -180, 180, 0, true, "°"),
+            secondflick = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFFlick\aE8E8E8FF] ~\aE8E8E8FF Nr \aBBC0F3FF2", {"Left", "Right", "Custom"}),
+            second_custom_degree = ui.new_slider("AA", "Anti-aimbot angles", "Custom Nr \aBBC0F3FF2", -180, 180, 0, true, "°"),
+            quad_addon = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFFlick\aE8E8E8FF] ~\aE8E8E8FF Random", -90, 90, 0, true, "°", 1, {[-90] = "Full Left Rotate", [0] = "Off", [90] = "Full Right Rotate"}),
+            regularity = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFFlick\aE8E8E8FF] ~\aE8E8E8FF Timer", {"Free-Sync", "Free-Sync+", "1/4", "1/6"}),
+            freesync_res = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFFlick\aE8E8E8FF] ~\aE8E8E8FF Free-Sync Regularity", {"Spam", "High", "Mid", "Low"}),
+            pitch = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFFlick\aE8E8E8FF] ~\aE8E8E8FF Pitch °", {"Up", "Semi-Up", "Zero"}),
         },
     },
 
@@ -1335,7 +1353,7 @@ local aa = {}
 
 
 
-local cond_select = ui.new_combobox("AA", "Anti-aimbot angles", "Anti-Aim Conditions", {states[1], states[2], states[3], states[4], states[5], states[6], states[7], states[8]})
+local cond_select = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAnti\aE8E8E8FF-\aBBC0F3FFAim\aE8E8E8FF] ~\aE8E8E8FF Conditions", {states[1], states[2], states[3], states[4], states[5], states[6], states[7], states[8]})
 for i, v in next, states do
     aa[v] = {}
     antiaim[i] = {
@@ -1346,32 +1364,32 @@ for i, v in next, states do
         label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFAdjust Body Yaw"),
         spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         body_movement = ui.new_combobox("AA", "Anti-aimbot angles", "\n", {"Default", "Jitter", "Slow", "Evade"}),
-        b_yaw = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Base Yaw", -100, 100, 0),
-        b_left = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Left", -100, 100, 0),
-        b_right = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Right", -100, 100, 0),
-        slow_type = ui.new_combobox("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FFSwitch Type", {"Single", "Double", "Unpredictive"}),
-        ghost = ui.new_combobox("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FFJitter Regularity", {"Normal", "Ghost"}),
-        switch_timer = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Timer", 1, 15, 0),
-        b_delay = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Delay", 1, 15, 1),
-        b_delay1 = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Delay 1", 1, 15, 1),
-        b_delay2 = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Delay 2", 1, 15, 1),
+        b_yaw = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Base Yaw", -100, 100, 0),
+        b_left = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Left", -100, 100, 0),
+        b_right = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Right", -100, 100, 0),
+        slow_type = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Switch Type", {"Single", "Double", "Unpredictive"}),
+        ghost = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Jitter Regularity", {"Normal", "Ghost"}),
+        switch_timer = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Timer", 1, 15, 0),
+        b_delay = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Delay", 1, 15, 1),
+        b_delay1 = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Delay 1", 1, 15, 1),
+        b_delay2 = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Delay 2", 1, 15, 1),
 
-        irregulization = ui.new_combobox("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FFShifting Yaw", {"Off", "Step", "Randomize"}),
-        left_irreg_amount = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Left Shift Amount", 1, 50, 1, true, "%", 1),
-        right_irreg_amount = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Right Shift Amount", 1, 50, 1, true, "%", 1),
-        global_irreg_amount = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Right Shift Amount", 1, 50, 1, true, "%", 1),
+        irregulization = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Shifting Yaw", {"Off", "Step", "Randomize"}),
+        left_irreg_amount = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Left Shift Amount", 1, 50, 1, true, "%", 1),
+        right_irreg_amount = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Right Shift Amount", 1, 50, 1, true, "%", 1),
+        global_irreg_amount = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Right Shift Amount", 1, 50, 1, true, "%", 1),
 
         spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         label2 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFYaw Jitter"),
         spacer4 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         jitter_type = ui.new_combobox("AA", "Anti-aimbot angles", "\n", {"Off", "Offset", "Center", "Stomp"}),
-        j_rad = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Radius", -50, 50, 0),
+        j_rad = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Radius", -50, 50, 0),
 
         spacer5 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         label3 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFDesync"),
         spacer6 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         desync_type = ui.new_combobox("AA", "Anti-aimbot angles", "\n", {"Gamesense", "Reversed"}),
-        fake = ui.new_slider("AA", "Anti-aimbot angles", "\aBBC0F3FF~ \aE8E8E8FF Fake", 0, 58, 0, true, "°", 1)
+        fake = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Fake", 0, 58, 0, true, "°", 1)
 
 
 
@@ -1488,9 +1506,10 @@ local config_sys = {
     
         notify.new_bottom(255, 255, 255, {{"Imported", true}, {" config"}})
     end),
-
-    default_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFLoad Default  ", function() 
-        for k, v in pairs(json.parse(base64.decode("W3t9LHt9LHt9LFsxLDIsMSwzMiwtMjUsMTMsIlNsb3ciLCJHYW1lc2Vuc2UiLDAsdHJ1ZSwwLCJDZW50ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIixmYWxzZSwiRG91YmxlIiwiICIsIiAiLCIgIiwiICIsIiAiLCIgIiwyLDEsMiwyLDM2LC0yNSwxMywiU2xvdyIsIkdhbWVzZW5zZSIsMCxmYWxzZSwwLCJDZW50ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIixmYWxzZSwiU2luZ2xlIiwiICIsIiAiLCIgIiwiICIsIiAiLCIgIiwxMCwxLDIsMiwzNiwtMjUsMTMsIlNsb3ciLCJHYW1lc2Vuc2UiLDAsZmFsc2UsMCwiQ2VudGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZBZGp1c3QgQm9keSBZYXciLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRllhdyBKaXR0ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkRlc3luYyIsZmFsc2UsIlNpbmdsZSIsIiAiLCIgIiwiICIsIiAiLCIgIiwiICIsMTAsMSwyLDIsMzYsLTI1LDEzLCJTbG93IiwiR2FtZXNlbnNlIiwwLGZhbHNlLDAsIkNlbnRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLGZhbHNlLCJTaW5nbGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEwLDEsMiwyLDM2LC0yNSwxMywiU2xvdyIsIkdhbWVzZW5zZSIsMCxmYWxzZSwwLCJDZW50ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIixmYWxzZSwiU2luZ2xlIiwiICIsIiAiLCIgIiwiICIsIiAiLCIgIiwxMCwxLDIsMiwzNiwtMjUsMTMsIlNsb3ciLCJHYW1lc2Vuc2UiLDAsZmFsc2UsMCwiQ2VudGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZBZGp1c3QgQm9keSBZYXciLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRllhdyBKaXR0ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkRlc3luYyIsZmFsc2UsIlNpbmdsZSIsIiAiLCIgIiwiICIsIiAiLCIgIiwiICIsMTAsMSwyLDIsMzYsLTI1LDEzLCJTbG93IiwiR2FtZXNlbnNlIiwwLGZhbHNlLDAsIkNlbnRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLGZhbHNlLCJTaW5nbGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEwXSx7fV0="))) do
+    --[[
+    
+        default_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFLoad Default  ", function() 
+        for k, v in pairs(json.parse(base64.decode("evade_W3t9LHt9LHt9LFsxLDQsMSwzMSwtMzEsNywiSml0dGVyIiwiR2FtZXNlbnNlIiw1OCx0cnVlLCJHaG9zdCIsMzIsIlJhbmRvbWl6ZSIsNDYsIk9mZiIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLDEzLGZhbHNlLDEzLCJTaW5nbGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEsMSwxLDQsMjgsLTMyLDMsIlNsb3ciLCJHYW1lc2Vuc2UiLDAsdHJ1ZSwiR2hvc3QiLDEsIlJhbmRvbWl6ZSIsMCwiT2ZmIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZBZGp1c3QgQm9keSBZYXciLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRllhdyBKaXR0ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkRlc3luYyIsMTgsdHJ1ZSwxMywiRG91YmxlIiwiICIsIiAiLCIgIiwiICIsIiAiLCIgIiw2LDEsMSw0LDM2LC0zMSwtMSwiU2xvdyIsIkdhbWVzZW5zZSIsMCx0cnVlLCJHaG9zdCIsMSwiUmFuZG9taXplIiwwLCJPZmYiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIiwxMCx0cnVlLDE4LCJEb3VibGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDYsMSw4LDIsMzQsLTQwLDIsIlNsb3ciLCJHYW1lc2Vuc2UiLDM2LHRydWUsIkdob3N0IiwxLCJTdGVwIiwwLCJPZmYiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIiwyOCx0cnVlLDIzLCJEb3VibGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEyLDEsNCwxLDEwLC0xMyw1LCJKaXR0ZXIiLCJHYW1lc2Vuc2UiLDU4LHRydWUsIkdob3N0Iiw1MCwiUmFuZG9taXplIiwwLCJPZmYiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIiwxMSx0cnVlLDExLCJTaW5nbGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEsMSw0LDEsMzEsLTI5LDYsIkppdHRlciIsIkdhbWVzZW5zZSIsMCx0cnVlLCJHaG9zdCIsMSwiU3RlcCIsLTMsIkNlbnRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLDIyLHRydWUsMTgsIkRvdWJsZSIsIiAiLCIgIiwiICIsIiAiLCIgIiwiICIsNSwxLDQsMSwzMiwtMzUsOCwiSml0dGVyIiwiR2FtZXNlbnNlIiw1OCx0cnVlLCJHaG9zdCIsMSwiUmFuZG9taXplIiwwLCJPZmYiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIiwxNix0cnVlLDE1LCJTaW5nbGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDFdLHt9XQ=="))) do
             k = ({[1] = "bools", [2] = "tables",[3] = "ints",[4] = "numbers"})[k]
             for k2, v2 in pairs(v) do
                 if (k == "bools") then
@@ -1513,6 +1532,9 @@ local config_sys = {
 
         notify.new_bottom(255, 255, 255, {{"Loaded "}, {"default", true}, {" config"}})
     end),
+    
+    ]]
+
 
     spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
 
@@ -1542,7 +1564,7 @@ local function fix_antiaim_visibility()
 
     ui.set_visible(config_sys.export_cfg, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
     ui.set_visible(config_sys.import_cfg, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
-    ui.set_visible(config_sys.default_cfg, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
+    --ui.set_visible(config_sys.default_cfg, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
     ui.set_visible(config_sys.spacer1, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
     ui.set_visible(config_sys.spacer2, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
     ui.set_visible(config_sys.label1, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
@@ -1559,16 +1581,18 @@ local function fix_antiaim_visibility()
 
 
     ui.set_visible(aa_tabs, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and has_access)
+    ui.set_visible(firstlabel, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and has_access)
     ui.set_visible(aa_type, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Anti-Aimbot" and has_access)
     ui.set_visible(cond_select, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_type) == "Builder" and has_access)
     for i = 1, #states do
         local show_rad = ui.get(antiaim[i].body_movement) ~= "Default"
         local is_timer_true = ui.get(antiaim[i].slow_type) == "Double" or ui.get(antiaim[i].slow_type) == "Unpredictive"
         local show_delay = ui.get(antiaim[i].body_movement) == "Slow" or ui.get(antiaim[i].body_movement) == "Evade"
-
+        local is_second_check = ui.get(lua.def.flick.multiple_flicks) == "Double"
 
         ui.set_visible(lua.aa_additions.additions, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access)
         ui.set_visible(lua.aa_additions.hidehead_drop, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Hide Head"))
+        --[[
         ui.set_visible(lua.aa_additions.leftlabel, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
         ui.set_visible(lua.aa_additions.lefthotkey, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
         ui.set_visible(lua.aa_additions.rightlabel, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
@@ -1577,7 +1601,7 @@ local function fix_antiaim_visibility()
         ui.set_visible(lua.aa_additions.forwardhotkey, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
         ui.set_visible(lua.aa_additions.resetlabel, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
         ui.set_visible(lua.aa_additions.resethotkey, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access and getcombo(lua.aa_additions.additions, "Manual Anti-aim"))
-
+        ]]
         ui.set_visible(cond_select, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].ovr_state, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
         ui.set_visible(antiaim[i].spacer1, ui.get(cond_select) == states[i] and ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_builder and has_access)
@@ -1656,13 +1680,30 @@ local function fix_antiaim_visibility()
         freesync_cust_stat = ui.get(lua.def.freesync.yaw_type) == "Custom (Jitter)" or ui.get(lua.def.freesync.yaw_type) == "Custom (Static)"
         freesync_cust_jitt = ui.get(lua.def.freesync.yaw_type) == "Custom (Jitter)"
         
-        ui.set_visible(lua.def.freesync.conditions, not sync_defensive_desync and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.freesync.yaw_type, not sync_defensive_desync and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.freesync.c_yaw_degree, not sync_defensive_desync and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and freesync_cust_stat)
-        ui.set_visible(lua.def.freesync.c_yaw_jitter_degree, not sync_defensive_desync and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and freesync_cust_jitt)
-        ui.set_visible(lua.def.freesync.pitch_type, not sync_defensive_desync and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.freesync.c_pitch_degree, not sync_defensive_desync and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and ui.get(lua.def.freesync.pitch_type) == "Custom")
-        
+        ui.set_visible(lua.def.freesync.conditions, ui.get(lua.def.def_type) == "Free-sync" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.freesync.yaw_type, ui.get(lua.def.def_type) == "Free-sync" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.freesync.c_yaw_degree, ui.get(lua.def.def_type) == "Free-sync" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and freesync_cust_stat)
+        ui.set_visible(lua.def.freesync.c_yaw_jitter_degree, ui.get(lua.def.def_type) == "Free-sync" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and freesync_cust_jitt)
+        ui.set_visible(lua.def.freesync.pitch_type, ui.get(lua.def.def_type) == "Free-sync" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.freesync.c_pitch_degree, ui.get(lua.def.def_type) == "Free-sync" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and ui.get(lua.def.freesync.pitch_type) == "Custom")
+
+
+
+        local doubleorsingle = ui.get(lua.def.flick.multiple_flicks) == "Double" or ui.get(lua.def.flick.multiple_flicks) == "Single"
+        -- Flick Thingy
+
+        ui.set_visible(lua.def.flick.yp_drop, ui.get(lua.def.def_type) == "Experimental Yaw Flicks" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.flick.multiple_flicks, ui.get(lua.def.def_type) == "Experimental Yaw Flicks" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.flick.firstflick, doubleorsingle and ui.get(lua.def.def_type) == "Experimental Yaw Flicks" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.flick.first_custom_degree, doubleorsingle and ui.get(lua.def.flick.firstflick) == "Custom" and ui.get(lua.def.def_type) == "Experimental Yaw Flicks" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.flick.secondflick, is_second_check and ui.get(lua.def.def_type) == "Experimental Yaw Flicks" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.flick.second_custom_degree, is_second_check and ui.get(lua.def.flick.secondflick) == "Custom" and ui.get(lua.def.def_type) == "Experimental Yaw Flicks" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.flick.quad_addon, not doubleorsingle and ui.get(lua.def.flick.multiple_flicks) == "Random" and ui.get(lua.def.def_type) == "Experimental Yaw Flicks" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.flick.regularity, ui.get(lua.def.def_type) == "Experimental Yaw Flicks" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.flick.freesync_res, ui.get(lua.def.def_type) == "Experimental Yaw Flicks" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.flick.pitch, ui.get(lua.def.flick.yp_drop) == "Yaw & Pitch" and ui.get(lua.def.def_type) == "Experimental Yaw Flicks" and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+
+
         ui.set_visible(antiaim[1].ovr_state, false)
     end
 
@@ -1741,6 +1782,8 @@ local def_vars = {
         defensive = 0,
     },
 
+    selectjitter = false,
+
     fs_istrue = false
 }
 local function height_to_pitch()
@@ -1759,6 +1802,7 @@ local function keep_updt()
     def_vars.is_true = false
     def_vars.selfhand_fs = false
     def_vars.fs_istrue = false
+    def_vars.selectjitter = false
     if entity.get_local_player() == nil then return end
     local lp = entity.get_local_player()
 end
@@ -2011,6 +2055,9 @@ local function pre_prediction_logic()
             def_vars.selfhand_fs = true
         end
 
+        if vals_tbl[i] > 0 and c_dmg <= 0 then
+            def_vars.selectjitter = true
+        end
 
 
         if vals_tbl[i] > 0 and getcombo(lua.def.freesync.conditions, "Smart") and c_dmg <= 0 then
@@ -2137,7 +2184,9 @@ local function Builder(arg)
     local xv, yv, zv = entity.get_prop(lp, "m_vecVelocity")
     local duck = (entity.get_prop(lp, "m_flDuckAmount") > 0.1)
     local team = (entity.get_prop(lp, "m_iTeamNum") == 2 and "t" or "ct")
+    local vvelocity = math.sqrt(xv*xv + yv*yv + zv*zv)
 
+    
 
 
 
@@ -2187,7 +2236,7 @@ local function Builder(arg)
 
     end
 
-    --print("Left Irreg: "..left_irreg.." | Actual Get: "..ui.get(antiaim[state]["left_irreg_amount"]))
+
 
     if ui.get(antiaim[state]["body_movement"]) == "Default" then
 
@@ -2314,8 +2363,21 @@ local function Builder(arg)
     end
 
 
-
-
+    if getcombo(lua.aa_additions.additions, "Select Jitter") and def_vars.selectjitter == true and vvelocity > 120 then
+        ui.set(menu.body_yaw[1], "static")
+        local yaw_body = entity.get_prop(lp, "m_flPoseParameter", 11) * 120 - 60 <= 0
+        local body_value = false
+        if yaw_body then
+            body_value = true
+        end
+        if math.max(-60, math.min(60, math.floor((entity.get_prop(lp,"m_flPoseParameter", 11) or 0)*120-60+0.5))) > 0 then
+            ui.set(menu.body_yaw[2], -1)
+            ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_yaw"]) - (49 * 1) + left_irreg))
+        else
+            ui.set(menu.body_yaw[2], 1)
+            ui.set(menu.yaw[2], clamp(ui.get(antiaim[state]["b_yaw"]) - (-36 * 1) + right_irreg))
+        end
+    end
 
 
 
@@ -2409,7 +2471,8 @@ local function defensive_logic(arg)
     local current_time = globals.realtime()
     local pitch_variable = ((1 + math.cos((current_time - pre.start_time) * 40)) / 2) * 360
     local slow_yaw_var = ((1 + math.cos((current_time - pre.start_time) * (ui.get(lua.def.delay) * 4))) / 2) * 30
-
+    local xv, yv, zv = entity.get_prop(lp, "m_vecVelocity")
+    local vvelocity = math.sqrt(xv*xv + yv*yv + zv*zv)
     local compensate_camera = client.camera_angles() - 360
     arg.force_defensive = false
     local view_x, view_y, roll = client.camera_angles();
@@ -2462,6 +2525,9 @@ local function defensive_logic(arg)
     else
         def_vars.base = 0
     end
+
+
+
 
 
     for i = 1, #def_states_table do
@@ -2660,13 +2726,34 @@ local function defensive_logic(arg)
     end
 end
 
+fffL = 0
+
+local flickvars = {
+
+    flickways = fffL,
+    is_freesync = false,
+    waysmemory = 0,
+    waysadder = 1,
+    waysreset = 3,
+    can_execute = false,
+    extrapolate = 0,
+    pitchflick = false,
+    logtimer = 0,
+    logval = 0,
+    quadval = 0,
+    sixteenval = 0,
+    set_loop = 0,
+    spin_fix = 0,
+    set_spin_yaw = 0
+
+    
+}
+
+local function freesync_and_flick(arg)
 
 
-local function freesync_logic(arg)
 
-
-
-    if not ui.get(lua.def.toggle) or not ui.get(lua.def.def_type) == "Free-Sync" then return end
+    if not ui.get(lua.def.toggle) then return end
 
 
     local isDefensive = (def_vars.defensive.defensive > 1 and def_vars.defensive.defensive < 14)
@@ -2717,7 +2804,7 @@ local function freesync_logic(arg)
         freesync_timer = 0
     end
 
-    if isDefensive and def_vars.fs_istrue == true and arg.chokedcommands == 1 then
+    if isDefensive and def_vars.fs_istrue == true and arg.chokedcommands == 1 and ui.get(lua.def.def_type) == "Free-Sync" then
         
         ui.set(menu.yaw[2], math.random(0, 100) >= 50 and 120 or -120)
         ui.set(menu.yaw_jitter[1], "Center")
@@ -2731,15 +2818,176 @@ local function freesync_logic(arg)
     end
 
 
+    if ui.get(lua.def.def_type) == "Experimental Yaw Flicks" then
+
+        --[[
+        if ui.get(lua.def.flick.quad_addon) > 340 then
+            flickvars.spin_fix = ui.get(lua.def.flick.quad_addon) - 23
+        else
+            flickvars.spin_fix = ui.get(lua.def.flick.quad_addon)
+        end
+        if flickvars.set_loop <= flickvars.spin_fix then
+            flickvars.set_loop = flickvars.set_loop + 1
+        end
+        if flickvars.set_loop > flickvars.spin_fix then
+            flickvars.set_loop = 0
+        end
+
+        flickvars.yaw_val = (flickvars.set_loop - flickvars.spin_fix / 2)
+
+        ]]
+        ui.set(menu.pitch[1], "Custom")
+        ui.set(menu.pitch[2], 89)
+        if ui.get(lua.def.flick.freesync_res) == "Spam" then 
+            flickvars.extrapolate = 12
+        elseif ui.get(lua.def.flick.freesync_res) == "High" then
+            flickvars.extrapolate = 15
+        elseif ui.get(lua.def.flick.freesync_res) == "Mid" then
+            flickvars.extrapolate = 22
+        else
+            flickvars.extrapolate = 30
+        end
+        flickvars.pitchflick = false
+        flickvars.can_execute = false
+        -- Flick Funny Stuff Setup
+        flickvars.is_freesync = false
+
+        if freesync_timer < 10 then
+            flickvars.is_freesync = true
+        end
+        if freesync_timer > flickvars.extrapolate then
+            freesync_timer = 0
+        end
+        fffL = 0
+        fff, fffn = ui.get(lua.def.flick.multiple_flicks) == "Single", 1
+        ffs, ffsn = ui.get(lua.def.flick.multiple_flicks) == "Double", 2
+
+
+        if fff then fffL = fffn end
+        if ffs then fffL = ffsn end
+        flickvars.logtimer = 0
+        if flickvars.logtimer < 40 then 
+            flickvars.logtimer = flickvars.logtimer + 0.5
+        end
+
+        if flickvars.logtimer > 40 then
+            flickvars.logtimer = 0
+        end
+        flickvars.logval = 21
+        local is_freesync_allowed = ui.get(lua.def.flick.regularity) == "Free-Sync" or ui.get(lua.def.flick.regularity) == "Free-Sync+"
+        if isDefensive and flickvars.is_freesync == true and is_freesync_allowed then
+            flickvars.can_execute = true
+            flickvars.waysreset = flickvars.flickways +1
+
+            if flickvars.logtimer > 27 then
+                flickvars.logval = 12
+            end
+            flickvars.waysmemory = flickvars.waysmemory + flickvars.waysadder/flickvars.logval
+
+            if flickvars.waysmemory > flickvars.waysreset then
+                flickvars.waysmemory = 0
+            end
+
+
+            flickvars.quadval = ((flickvars.waysmemory + 1) / 2) * 12
+            flickvars.quadval = math.floor((flickvars.quadval / 2) - 1.1)
+
+
+        end
 
 
 
+        if flickvars.can_execute == true and arg.chokedcommands == 1 then
+
+
+
+            arg.force_defensive = true
+
+            if ui.get(lua.def.flick.multiple_flicks) == "Single" or ui.get(lua.def.flick.multiple_flicks) == "Double" then
+                if flickvars.waysmemory > 0.6 and fffL == 2 then
+                    if ui.get(lua.def.flick.secondflick) == "Left" then
+                        ui.set(menu.yaw[2], -90)
+                    elseif ui.get(lua.def.flick.secondflick) == "Right" then
+                        ui.set(menu.yaw[2], 90)
+                    else
+                        ui.set(menu.yaw[2], ui.get(lua.def.flick.second_custom_degree))
+                    end
+
+                    ui.set(menu.yaw_jitter[1], "Center")
+                    ui.set(menu.yaw_jitter[2], 0)
+                    ui.set(menu.body_yaw[1], "Off")
+                    ui.set(menu.body_yaw[2], 1)
+                    ui.set(menu.roll, 0)
+                    flickvars.pitchflick = true
+                end
+
+                if flickvars.waysmemory > 0.8 and fffL == 1 or flickvars.waysmemory > 0.8 and fffL == 2 then
+                    if ui.get(lua.def.flick.firstflick) == "Left" then
+                        ui.set(menu.yaw[2], -90)
+                    elseif ui.get(lua.def.flick.firstflick) == "Right" then
+                        ui.set(menu.yaw[2], 90)
+                    else
+                        ui.set(menu.yaw[2], ui.get(lua.def.flick.first_custom_degree))
+                    end
+
+                    ui.set(menu.yaw_jitter[1], "Center")
+                    ui.set(menu.yaw_jitter[2], 0)
+                    ui.set(menu.body_yaw[1], "Off")
+                    ui.set(menu.body_yaw[2], 1)
+                    ui.set(menu.roll, 0)
+                    flickvars.pitchflick = true
+                end
+            end
+
+            
+            if ui.get(lua.def.flick.multiple_flicks) == "Random" then
+                flickvars.yaw_val = math.random(ui.get(lua.def.flick.quad_addon), -ui.get(lua.def.flick.quad_addon)) * flickvars.quadval
+                if ui.get(lua.def.flick.quad_addon) > 45 and flickvars.quadval > 2 then
+                    flickvars.yaw_val = math.random(ui.get(lua.def.flick.quad_addon), -ui.get(lua.def.flick.quad_addon)) * flickvars.quadval
+                else
+                    flickvars.yaw_val = flickvars.yaw_val
+                end
+
+                if flickvars.yaw_val > 180 and flickvars.quadval < 3 then 
+                    flickvars.yaw_val = 179
+                end
+
+               if flickvars.yaw_val > 180 or flickvars.yaw_val < -180 then return end
+
+
+                ui.set(menu.yaw[2], flickvars.yaw_val)
+                ui.set(menu.yaw_jitter[1], "Center")
+                ui.set(menu.yaw_jitter[2], 0)
+                ui.set(menu.body_yaw[1], "Off")
+                ui.set(menu.body_yaw[2], 1)
+                ui.set(menu.roll, 0)
+                flickvars.pitchflick = true
+            end
+
+            
+            if flickvars.pitchflick == true and ui.get(lua.def.flick.yp_drop) == "Yaw & Pitch" then
+                if ui.get(lua.def.flick.pitch) == "Up" then
+                    ui.set(menu.pitch[1], "Custom")
+                    ui.set(menu.pitch[2], -88)
+                elseif ui.get(lua.def.flick.pitch) == "Semi-Up" then
+                    ui.set(menu.pitch[1], "Custom")
+                    ui.set(menu.pitch[2], -48)
+                else
+                    ui.set(menu.pitch[1], "Custom")
+                    ui.set(menu.pitch[2], 7)
+                end
+            end
+        end
+    end
 
 
 end
 
 
 local function disablers()
+
+    
+
     tbl.antiaim.is_antiknife = false
     if ui.get(aa_type) == "None" then
         ui.set(menu.yaw[2], 0)
@@ -2751,6 +2999,12 @@ local function disablers()
         ui.set(menu.pitch[1], "Custom")
         ui.set(menu.pitch[2], 89)
     end
+
+    -- Hidehead
+
+    local lp = entity.get_local_player()
+    local weapon = entity.get_player_weapon(lp)
+    local weapon_info = csgo_weapons(weapon)
 
 
 
@@ -2765,6 +3019,15 @@ local function disablers()
             ui.set(menu.body_yaw[1], "Static")
             ui.set(menu.yaw_jitter[2], 0)
         end
+
+        if getcombo(lua.aa_additions.additions, "Static Freestanding") then
+            ui.set(menu.pitch[1], "Down")
+            ui.set(menu.yaw[2], 0)
+            ui.set(menu.body_yaw[1], "Static")
+            ui.set(menu.yaw_jitter[2], 0)
+            ui.set(menu.body_yaw[2], -1)
+        end
+
     else
         ui.set(menu.freestand[1], false)
         ui.set(menu.freestand[2], "On hotkey")
@@ -2781,6 +3044,15 @@ local function disablers()
     else
         ui.set(menu.onshot[1], false)
         ui.set(menu.onshot[2], "On hotkey")
+    end
+
+    if getcombo(lua.aa_additions.additions, "Hide Head") then
+        if getcombo(lua.aa_additions.hidehead_drop, "On Knife") and weapon_info.type == "knife" or getcombo(lua.aa_additions.hidehead_drop, "On Zeus") and weapon_info.type == "taser" then
+            ui.set(menu.yaw[2], 20)
+            ui.set(menu.yaw_jitter[2], 0)
+            ui.set(menu.body_yaw[1], "Static")
+            ui.set(menu.body_yaw[2], 1)
+        end
     end
 
 
@@ -2827,6 +3099,10 @@ local function disablers()
         end
     end
 
+
+    -- Hide Head Functions
+    
+
 end
 local text_dst = 0
 local text_spr = 8
@@ -2869,6 +3145,8 @@ local function indicators(arg)
     if not valid then
         return
     end
+
+    if not ui.get(lua.visuals.toggle) then return end
     local isCharged = anti_aim.get_double_tap()
     local local_overlap = anti_aim.get_overlap()
     local weapon = entity.get_player_weapon(lp)
@@ -3080,24 +3358,26 @@ local function indicators(arg)
     local real_state = getstate(air, duck, math.sqrt(xv*xv + yv*yv + zv*zv), (ui.get(menu.slowmotion[1]) and ui.get(menu.slowmotion[2])))
     
 
+    if getcombo(lua.visuals.other, "Debug Panel") then
+        renderer.text(screen_x * 1.5, screen_y / 2.7, 255, 255, 255, math.abs(1 * math.cos(2 * math.pi * globals.curtime() / 4)) * (220), nil, nil, "//debug panel - evade (debug)")
+        if anti_aim.get_tickbase_shifting() > 1 then
+            debug_align_multiplier = debug_align_multiplier + debug_align_stat
+            renderer.text(screen_x * 1.5, screen_y / 2.7 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "tickbase shifting: "..anti_aim.get_tickbase_shifting())
+        end
+        renderer.text(screen_x * 1.5, screen_y / 2.7 + 10 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "current weapon type: "..weapon_info.type)
+        renderer.text(screen_x * 1.5, screen_y / 2.7 + 20 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "desync peak value: "..math.floor(anti_aim.get_desync(1)))
+        renderer.text(screen_x * 1.5, screen_y / 2.7 + 30 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "movement state: "..debugconditions[real_state])
 
-    renderer.text(screen_x * 1.5, screen_y / 2.7, 255, 255, 255, math.abs(1 * math.cos(2 * math.pi * globals.curtime() / 4)) * (220), nil, nil, "//debug panel - evade (debug)")
-    if anti_aim.get_tickbase_shifting() > 1 then
-        debug_align_multiplier = debug_align_multiplier + debug_align_stat
-        renderer.text(screen_x * 1.5, screen_y / 2.7 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "tickbase shifting: "..anti_aim.get_tickbase_shifting())
+        if getcombo(lua.aa_additions.additions, "Anti-Shank") and tbl.antiaim.is_antiknife == true then
+            debug_align_multiplier = debug_align_multiplier + debug_align_stat
+            renderer.text(screen_x * 1.5, screen_y / 2.7 + 30 + debug_align_multiplier, 255, 180, 180, 220, nil, nil, "anti-shank active")
+        end
+
+        renderer.text(screen_x * 1.5, screen_y / 2.7 + 40 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "velocity: "..math.floor(vvelocity))
+        renderer.text(screen_x * 1.5, screen_y / 2.7 + 50 + debug_align_multiplier, lp_hp <= 92 and 255 or 200, lp_hp <= 92 and 180 or 255, lp_hp <= 92 and 180 or 200, 220, nil, nil, lp_hp <= 92 and "is local lethal: true" or "is local lethal: false")
+        renderer.text(screen_x * 1.5, screen_y / 2.7 + 60 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "hitratio: "..play_data.hm_ratio.."%")
     end
-    renderer.text(screen_x * 1.5, screen_y / 2.7 + 10 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "currect weapon type: "..weapon_info.type)
-    renderer.text(screen_x * 1.5, screen_y / 2.7 + 20 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "desync peak value: "..math.floor(anti_aim.get_desync(1)))
-    renderer.text(screen_x * 1.5, screen_y / 2.7 + 30 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "movement state: "..debugconditions[real_state])
 
-    if getcombo(lua.aa_additions.additions, "Anti-Shank") and tbl.antiaim.is_antiknife == true then
-        debug_align_multiplier = debug_align_multiplier + debug_align_stat
-        renderer.text(screen_x * 1.5, screen_y / 2.7 + 30 + debug_align_multiplier, 255, 180, 180, 220, nil, nil, "anti-shank active")
-    end
-
-    renderer.text(screen_x * 1.5, screen_y / 2.7 + 40 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "velocity: "..math.floor(vvelocity))
-    renderer.text(screen_x * 1.5, screen_y / 2.7 + 50 + debug_align_multiplier, lp_hp <= 92 and 255 or 200, lp_hp <= 92 and 180 or 255, lp_hp <= 92 and 180 or 200, 220, nil, nil, lp_hp <= 92 and "is local lethal: true" or "is local lethal: false")
-    renderer.text(screen_x * 1.5, screen_y / 2.7 + 60 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "hitratio: "..play_data.hm_ratio.."%")
 
 
 end
@@ -3119,8 +3399,25 @@ local function debug_render()
         return
     end
 
-    renderer.text(screen_x - 10, screen_y + 22, 255, 255, 255, 255, "-c", nil, "")
-    renderer.text(screen_x - 10, screen_y + 22, 255, 255, 255, 255, "-c", nil, "")
+    if flickvars.can_execute == true then
+        renderer.gradient(screen_x - 25, screen_y / 3 - 7, 54, 25, 255, 255, 255, 90, 230, 190, 190, 20, true)
+            --roofs
+            renderer.rectangle(screen_x - 27, screen_y / 3 - 8, 58, 2, 160, 160, 160, 220)
+            renderer.rectangle(screen_x + 1, screen_y / 3 + 17, 2, 2, 166, 160, 160, 220)
+        
+            -- bottom yaw roof
+            renderer.rectangle(screen_x + 3, screen_y / 3 + 17, 28, 2, ui.get(menu.yaw[2]) > 0 and 255 or 90, 90, 90, 220)
+            renderer.rectangle(screen_x - 27, screen_y / 3 + 17, 28, 2, ui.get(menu.yaw[2]) < 0 and 255 or 90, 90, 90, 220)
+            --walls
+            renderer.rectangle(screen_x - 27, screen_y / 3 - 6, 2, 23, 160, 160, 160, 220)
+            renderer.rectangle(screen_x + 29, screen_y / 3 - 6, 2, 23, 160, 160, 160, 220)
+
+        renderer.text(screen_x, screen_y / 3, 255, 110, 110, 255, "-c", nil, "DEF // BREAK")
+        renderer.text(screen_x, screen_y / 3 + 10, 255, 110, 110, 255, "-c", nil, string.upper(ui.get(lua.def.flick.multiple_flicks)))
+
+
+    end
+
 
 end
 --[[
@@ -3191,7 +3488,7 @@ client.set_event_callback("setup_command", function(arg)
         Presets(arg)
     end
     defensive_logic(arg)
-    freesync_logic(arg)
+    freesync_and_flick(arg)
     disablers()
 end)
 
@@ -3403,6 +3700,8 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.visuals.crosshair,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
     ui.set_visible(lua.visuals.other,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
     ui.set_visible(lua.visuals.logs,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
+
+    debug_render()
 end)
 
 
