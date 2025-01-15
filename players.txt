@@ -551,7 +551,8 @@ local lua = {
         spacer3 = ui.new_label("AA", "Other", " \n"),
         fs = ui.new_checkbox("AA", "Other", "\aBBC0F3FFFreestanding", {"Default"}),
         fs_key = ui.new_hotkey("AA", "Other", "\nFreestanding Bind", true),
-        sh_fs = ui.new_checkbox("AA", "Other", "\aBBC0F3FFSelf-Handling Freestand", {"Default"}),
+        sh_fs = ui.new_checkbox("AA", "Other", "\aBBC0F3FFEvade Freestand", {"Default"}),
+        shfs_key = ui.new_hotkey("AA", "Other", "\ndwdwd", true),
         osaa = ui.new_checkbox("AA", "Other", "\aBBC0F3FFOn shot anti-aim", {"Default"}),
         osaa_key = ui.new_hotkey("AA", "Other", "\nOSAA BIND", true),
     },
@@ -2074,7 +2075,6 @@ local function pre_prediction_logic()
     end
 
 
-   -- print(def_vars.lpred.." | "..def_vars.rpred)
 end
 
 
@@ -2988,6 +2988,8 @@ local function freesync_and_flick(arg)
 
 end
 
+local isdouble_pred = false
+local fsindicator = "NIL"
 
 local function disablers()
 
@@ -3062,15 +3064,29 @@ local function disablers()
     end
 
 
-    --[[
-        if not def_vars.rpred == 0 and def_vars.lpred < 1 then
-        ui.set(menu.yaw[2], 103)
-    elseif not def_vars.lpred == 0 and def_vars.rpred < 1 then
-        ui.set(menu.yaw[2], -103)
+
+    if ui.get(lua.home.shfs_key) and ui.get(lua.home.sh_fs) then
+        isdouble_pred = false
+        if def_vars.lpred > 1 and def_vars.rpred > 1 then
+            isdouble_pred = true
+        end
+        
+        if isdouble_pred == false then
+            if def_vars.lpred > 1 then
+                fsindicator = "RIGHT"
+                ui.set(menu.yaw[2], 103)
+            elseif def_vars.rpred > 1 then
+                fsindicator = "LEFT"
+                ui.set(menu.yaw[2], -103)
+            end
+        end
     end
+
+
+
     
     
-    ]]
+
 
 
     ---------------------------------------
@@ -3173,8 +3189,9 @@ local function indicators(arg)
     local team = (entity.get_prop(lp, "m_iTeamNum") == 2 and "t" or "ct")
     local vvelocity = math.sqrt(xv*xv + yv*yv + zv*zv)
 
-    
-
+    if ui.get(lua.home.shfs_key) and ui.get(lua.home.sh_fs) then
+        renderer.indicator(230, 230, 230, 230, "EVADE FS ["..fsindicator.."]")
+    end
 
 
     local real_state = getstate(vvelocity > 260 or air, duck, math.sqrt(xv*xv + yv*yv + zv*zv), (ui.get(menu.slowmotion[1]) and ui.get(menu.slowmotion[2])))
