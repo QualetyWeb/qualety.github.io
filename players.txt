@@ -13,7 +13,7 @@ writefile("login_details.txt", "")
 writefile("evade_user.txt", "")
 writefile("hwid_management.txt", "")
 writefile("evade_autosave.txt", "")
-
+print("Do /load to force load pre-saved settings")
 local new_tbl = {
     hp = 100,
     old_hp = 100,
@@ -199,7 +199,7 @@ local get_base = {
     decode = ""
 }
 
-local curr_build = "Source"
+local curr_build = "DEV"
 
 local login_details = {
     login = "NULL",
@@ -559,15 +559,12 @@ local lua = {
     info = {
         label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFInformation"),
         label2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-        label3 = ui.new_label("AA", "Anti-aimbot angles", "Welcome \aBBC0F3FF".."[Player]".." \aE8E8E8FFto Evade \aA8A8A8EE[\aFFFFFFFFgame\aB7D658FFsense\aA8A8A8EE] \n "),
+        label3 = ui.new_label("AA", "Anti-aimbot angles", "Welcome \aBBC0F3FF".."[Player]".." \aE8E8E8FFto evade \aA8A8A8EE[\aFFFFFFFFgame\aB7D658FFsense\aA8A8A8EE] \n "),
         label4 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-        label5 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF- \aE8E8E8FFLast Update: [\aBBC0F3FF20 / 09 / 2023\aE8E8E8FF]"),
-        label6 = ui.new_label("AA", "Anti-aimbot angles", "ㅤ\aBBC0F3FF- \aF8F8F8FFUpdate Log: "),
-        label7 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCAdded Tab Manager"),
-        label8 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCFixed Icons"),
-        label9 = ui.new_label("AA", "Anti-aimbot angles", "ㅤㅤ- \aC8C8C8CCFixed Colors"),  
+        label5 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF- \aE8E8E8FFLast Update: [\aBBC0F3FF09 / 01 / 2025\aE8E8E8FF]"),
+
         label10 = ui.new_label("AA", "Anti-aimbot angles", " \n "),  
-        get_discord = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFEvade Discord", function() js_loadstring.OpenExternalBrowserURL("https://discord.gg/8g2WmefEAK") end),
+        get_discord = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFevade Discord", function() js_loadstring.OpenExternalBrowserURL("https://discord.gg/8g2WmefEAK") end),
     
         reset_login = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFReset Login Memory", function ()
 
@@ -590,7 +587,7 @@ local lua = {
 
         label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFPresets"),
         spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-        pre_type = ui.new_combobox("AA", "Anti-aimbot angles", "\n", {"Off", "Meta Jitter", "Delayed", "Evade Special"}),
+        pre_type = ui.new_combobox("AA", "Anti-aimbot angles", "\n", {"Off", "Meta Jitter", "Delayed", "evade Special"}),
         spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         left = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Left", -100, 100, 0),
         right = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Right", -100, 100, 0),
@@ -650,7 +647,7 @@ local lua = {
         spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         label2 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFPitch"),
         spacer4 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-        flick_type = ui.new_combobox("AA", "Anti-aimbot angles", "Pitch Type", {"Evade", "Custom"}),
+        flick_type = ui.new_combobox("AA", "Anti-aimbot angles", "Pitch Type", {"evade", "Custom"}),
         variation = ui.new_slider("AA", "Anti-aimbot angles", "Variation", 0, 50, 0, true, "°"),
         flick_rate = ui.new_slider("AA", "Anti-aimbot angles", "Flick Rate", 0, 50, 0),
         start_degree = ui.new_slider("AA", "Anti-aimbot angles", "Base Angle", 1, 6, 1, true, "*", 1, {[1] = "Down", [2] = "Half Down", [3] = "Zero", [4] = "Half Up", [5] = "Up", [6] = "Nod [Experiment]"}),
@@ -966,7 +963,7 @@ local confirm_register = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFRe
     end
     if string.find(login_details.web_info, get_login) and string.find(login_details.web_info, ui.get(login_menu.key_pass2)) then
         login_details.is_registered = true
-        client.color_log(235, 220, 255, "You've successfully registered an Evade account!")
+        client.color_log(235, 220, 255, "You've successfully registered an evade account!")
         writefile("hwid_management.txt", get_base.encode)
         notify.new_bottom(255, 255, 255,{ {"Your account has been \a989CBFFFsuccessfully\aFFFFFFFF created"} })
 
@@ -1002,7 +999,7 @@ local login_button = ui.new_button("AA", "Anti-aimbot angles", "\aBBC0F3FFLoad",
 
     if string.find(login_details.web_info, get_login) then
         login_details.access = true
-        client.color_log(235, 220, 255, "Successfully Loaded Evade!")
+        client.color_log(235, 220, 255, "Successfully Loaded evade!")
         writefile("login_details.txt", get_login)
         writefile("evade_user.txt", ui.get(login_menu.enter_user))
         notify.new_bottom(255, 255, 255,{ {"Successfully logged in as: "}, {tostring(readfile("evade_user.txt")), true}})
@@ -1279,7 +1276,7 @@ local db_load = function()
     play_data.ticks_elapsed = play_data.ticks_elapsed + 1
     local get_username = readfile("evade_user.txt") ~= nil and readfile("evade_user.txt") or "unknown"
     ui.set(lua.home.label2, "ㅤ\aBBC0F3FF- \aB3B7DDE2User: \aE8E8E8FF"..get_username)
-    ui.set(lua.info.label3, "Welcome \aBBC0F3FF"..get_username.." \aE8E8E8FFto Evade \aA8A8A8EE[\aFFFFFFFFgame\aB7D658FFsense\aA8A8A8EE]")
+    ui.set(lua.info.label3, "Welcome \aBBC0F3FF"..get_username.." \aE8E8E8FFto evade \aA8A8A8EE[\aFFFFFFFFgame\aB7D658FFsense\aA8A8A8EE]")
    -- play_data.seconds = ((globals.curtime() - play_data.start_time))
     --play_data.minutes = ((globals.curtime() - play_data.start_time)) / 60
     --play_data.hours = ((globals.curtime() - play_data.start_time)) / 3600
@@ -1338,7 +1335,7 @@ end
 local get_username = readfile("evade_user.txt") ~= nil and readfile("evade_user.txt") or "unknown"
 
 if readfile("evade_user.txt") ~= nil then
-    notify.new_bottom(255, 255, 255, {{"User "}, {get_username, true}, {" has successfully loaded evade"}})
+    notify.new_bottom(255, 255, 255, {{"User "}, {get_username, true}, {" has successfully loaded ["}, {"evade", true}, {"]"}})
 else
     if readfile("hwid_management.txt") == nil then
         notify.new_bottom(255, 255, 255, { { "You have \aF3696BFFnot\aFFFFFFFF registered yet" }})
@@ -1363,7 +1360,7 @@ for i, v in next, states do
         spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFAdjust Body Yaw"),
         spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-        body_movement = ui.new_combobox("AA", "Anti-aimbot angles", "\n", {"Default", "Jitter", "Slow", "Evade"}),
+        body_movement = ui.new_combobox("AA", "Anti-aimbot angles", "\n", {"Default", "Jitter", "Slow", "evade"}),
         b_yaw = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Base Yaw", -100, 100, 0),
         b_left = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Left", -100, 100, 0),
         b_right = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFAA\aE8E8E8FF] ~\aE8E8E8FF Right", -100, 100, 0),
@@ -1587,7 +1584,7 @@ local function fix_antiaim_visibility()
     for i = 1, #states do
         local show_rad = ui.get(antiaim[i].body_movement) ~= "Default"
         local is_timer_true = ui.get(antiaim[i].slow_type) == "Double" or ui.get(antiaim[i].slow_type) == "Unpredictive"
-        local show_delay = ui.get(antiaim[i].body_movement) == "Slow" or ui.get(antiaim[i].body_movement) == "Evade"
+        local show_delay = ui.get(antiaim[i].body_movement) == "Slow" or ui.get(antiaim[i].body_movement) == "evade"
         local is_second_check = ui.get(lua.def.flick.multiple_flicks) == "Double"
 
         ui.set_visible(lua.aa_additions.additions, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and ui.get(aa_tabs) == "Extra" and has_access)
@@ -1775,6 +1772,8 @@ local def_vars = {
     selfhand_fs = false,
     slow_timer = 0,
     closeenemy = "",
+    lpred = 0,
+    rpred = 0,
 
     defensive = {
         cmd = 0,
@@ -2046,6 +2045,9 @@ local function pre_prediction_logic()
 	end
 
     local vals_tbl = {l_dmg, r_dmg}
+    def_vars.lpred = l_dmg
+    def_vars.rpred = r_dmg
+    
     def_vars.closeenemy = closestplayer
     for i = 1, #vals_tbl do
         if vals_tbl[i] > 0 and getcombo(lua.def.def_conds, "Predict Visible") and c_dmg <= 0 then
@@ -2070,6 +2072,9 @@ local function pre_prediction_logic()
     if c_dmg > 0 and getcombo(lua.def.def_conds, "Visible") then
         def_vars.is_true = true
     end
+
+
+   -- print(def_vars.lpred.." | "..def_vars.rpred)
 end
 
 
@@ -2138,7 +2143,7 @@ local function Presets(arg)
         ui.set(menu.roll, 0)
 
 
-    elseif ui.get(lua.preset.pre_type) == "Evade Special" then
+    elseif ui.get(lua.preset.pre_type) == "evade Special" then
 
 
 
@@ -2328,7 +2333,7 @@ local function Builder(arg)
         end
 
 
-    elseif ui.get(antiaim[state]["body_movement"]) == "Evade" then
+    elseif ui.get(antiaim[state]["body_movement"]) == "evade" then
 
         local current_time = globals.realtime()
         if (1 + math.cos((current_time - pre.start_time) * (ui.get(antiaim[state]["b_delay"]) * 4))) / 2 > 0.5 then
@@ -2684,7 +2689,7 @@ local function defensive_logic(arg)
                         if pitchnod_func < -80 then
                             pitchnod_func = 89
                         end
-                        if ui.get(lua.def.flick_type) == "Evade" then
+                        if ui.get(lua.def.flick_type) == "evade" then
                             if isDefensive then
                                 ui.set(menu.pitch[2], pitch_str[ui.get(lua.def.trigger_pitch)])
                                 ui.set(menu.pitch[1], "Custom")
@@ -3007,7 +3012,6 @@ local function disablers()
     local weapon_info = csgo_weapons(weapon)
 
 
-
     if ui.get(lua.home.fs_key) and ui.get(lua.home.fs) then
         ui.set(menu.freestand[1], ui.get(lua.home.fs))
         ui.set(menu.freestand[2], "Always on")
@@ -3032,11 +3036,13 @@ local function disablers()
         ui.set(menu.freestand[1], false)
         ui.set(menu.freestand[2], "On hotkey")
     end
-
-    if ui.get(lua.home.sh_fs) and def_vars.selfhand_fs == true then
+    --[[
+        if ui.get(lua.home.sh_fs) and def_vars.selfhand_fs == true then
         ui.set(menu.freestand[1], true)
         ui.set(menu.freestand[2], "Always On")
     end
+    ]]
+
 
     if ui.get(lua.home.osaa_key) and ui.get(lua.home.osaa) then
         ui.set(menu.onshot[1], ui.get(lua.home.osaa))
@@ -3054,6 +3060,17 @@ local function disablers()
             ui.set(menu.body_yaw[2], 1)
         end
     end
+
+
+    --[[
+        if not def_vars.rpred == 0 and def_vars.lpred < 1 then
+        ui.set(menu.yaw[2], 103)
+    elseif not def_vars.lpred == 0 and def_vars.rpred < 1 then
+        ui.set(menu.yaw[2], -103)
+    end
+    
+    
+    ]]
 
 
     ---------------------------------------
@@ -3111,6 +3128,10 @@ local scopeFrac
 local scope_anim = 0
 local debug_align_stat = 10
 local debug_align_multiplier = 0
+local dtcol_r = 200
+local dtcol_g = 70
+local dtcol_b = 70
+
 local anims = {
 
     dt = 0,
@@ -3125,9 +3146,9 @@ local debugconditions = {
     "",
     "standing",
     "running",
-    "slow walking",
-    "jumping",
-    "duck jumping",
+    "slowwalk",
+    "air",
+    "air-duck",
     "crouching"
 }
 local function indicators(arg)
@@ -3146,6 +3167,21 @@ local function indicators(arg)
         return
     end
 
+    local air = bit.band(entity.get_prop(lp, "m_fFlags"), 1) == 0
+    local xv, yv, zv = entity.get_prop(lp, "m_vecVelocity")
+    local duck = (entity.get_prop(lp, "m_flDuckAmount") > 0.1)
+    local team = (entity.get_prop(lp, "m_iTeamNum") == 2 and "t" or "ct")
+    local vvelocity = math.sqrt(xv*xv + yv*yv + zv*zv)
+
+    
+
+
+
+    local real_state = getstate(vvelocity > 260 or air, duck, math.sqrt(xv*xv + yv*yv + zv*zv), (ui.get(menu.slowmotion[1]) and ui.get(menu.slowmotion[2])))
+    local state = real_state
+
+    local text_dst = 0
+    local text_spr = 8
     if not ui.get(lua.visuals.toggle) then return end
     local isCharged = anti_aim.get_double_tap()
     local local_overlap = anti_aim.get_overlap()
@@ -3177,7 +3213,7 @@ local function indicators(arg)
 
         },
         render_strings = {
-            "E V A D E  ",
+            "EVADE  ",
             get_build.." ",
         },
         anims = {
@@ -3214,11 +3250,7 @@ local function indicators(arg)
             nade_alpha = 190
         end
     end
-    local active_shit = {}
 
-    active_shit[#active_shit + 1] = ui.get(menu.doubletap[2]) and {("CHARGE"), globals.tickcount() + 250, 0} or active_shit[#active_shit - 1]
-    active_shit[#active_shit + 1] = ui.get(menu.freestand[2]) and {("FREE"), globals.tickcount() + 250, 0} or active_shit[#active_shit - 1]
-    active_shit[#active_shit + 1] = ui.get(menu.fakeduck) and {("F-DUCK"), globals.tickcount() + 250, 0} or active_shit[#active_shit - 2]
 
 
     --active_shit[#active_shit + 1] = ui.get(menu.freestand[1]) and ui.get(menu.freestand[2]) and "FREE"
@@ -3226,34 +3258,50 @@ local function indicators(arg)
 
 
     if ui.get(lua.visuals.crosshair) == "Basic" then
-
-        renderer.text(screen_x - renderer.measure_text("-", vis_tables.render_strings[2]) / 2, screen_y + 25, vis_tables.cols.crosshair[1], vis_tables.cols.crosshair[2], vis_tables.cols.crosshair[3], vis_tables.cols.crosshair[4] - nade_alpha, "-c", nil, vis_tables.render_strings[1])
-        renderer.text(screen_x + renderer.measure_text("-", vis_tables.render_strings[1]) / 2, screen_y + 25, 255, 255, 255, math.min(255 - nade_alpha, vis_tables.anims.alpha), "-c", nil, vis_tables.render_strings[2])
-        renderer.rectangle(screen_x - 25, screen_y + 31, local_overlap * rect_w, 3, vis_tables.cols.crosshair[1], vis_tables.cols.crosshair[2], vis_tables.cols.crosshair[3], vis_tables.cols.crosshair[4] - nade_alpha - 50)
-
-        -- Outline
-        renderer.rectangle(rect_x, rect_y, rect_w - rect_t, rect_t, 45, 45, 45, 255  - nade_alpha)
-        renderer.rectangle(rect_x, rect_y + rect_t, rect_t, rect_h - rect_t, 45, 45, 45, 255  - nade_alpha)
-        renderer.rectangle(rect_x + rect_w - rect_t, rect_y, rect_t, rect_h - rect_t, 45, 45, 45, 255  - nade_alpha)
-        renderer.rectangle(rect_x + rect_t, rect_y + rect_h - rect_t, rect_w - rect_t, rect_t, 45, 45, 45, 255  - nade_alpha)
-
-
-        for i = 1, #active_shit do
-
-            if #active_shit > 0 then
-
-                if anim1 < 8 then
-                    anim1 = anim1 + 0.5
-                end
-                renderer.text(screen_x + anim1, screen_y + 31 + (i * 8), 255, 255, 255, (anim1 * 31.875) - nade_alpha , "-c", nil, active_shit[i][1])
-            else
-
-                if anim1 > 0 then
-                    anim1 = anim1 - 0.5
-                end
-                renderer.text(screen_x + anim1, screen_y + 31 + (i * 8), 255, 255, 255, (anim1 * 31.875) - nade_alpha , "-c", nil, active_shit[i][1])
+        if m_bIsScoped then
+            if scope_anim < 22 then
+                scope_anim = scope_anim + 0.5
+            end
+        else
+            if scope_anim > 0 then
+                scope_anim = scope_anim - 0.5
             end
         end
+        renderer.text(screen_x + (scope_anim * 0.9), screen_y + 33, vis_tables.cols.crosshair[1], vis_tables.cols.crosshair[2], vis_tables.cols.crosshair[3], vis_tables.cols.crosshair[4] - nade_alpha, "-c", nil, vis_tables.render_strings[1])
+        -- Arrows for indic
+        renderer.text(screen_x + (scope_anim * 0.9) + 12, screen_y + 32, 255, 255, 255, math.min(255 - nade_alpha, vis_tables.anims.alpha), "-c", nil, ")")
+        renderer.text(screen_x + (scope_anim * 0.9) - 15, screen_y + 32, 255, 255, 255, math.min(255 - nade_alpha, vis_tables.anims.alpha), "-c", nil, "(")
+
+
+        renderer.text(screen_x + (scope_anim * 0.53), screen_y + 25, 255, 255, 255, math.min(255 - nade_alpha, vis_tables.anims.alpha), "-c", nil, vis_tables.render_strings[2])
+        if m_bIsScoped then
+            renderer.text(screen_x + (scope_anim * 0.15), screen_y + 36, 190, 190, 190, 210, "-", nil, string.upper(debugconditions[state]))
+        else
+            renderer.text(screen_x + ((scope_anim * renderer.measure_text("-", debugconditions[state])) * 0.05), screen_y + 41, 190, 190, 190, 210, "-c", nil, string.upper(debugconditions[state]))
+        end
+
+        if ui.get(menu.doubletap[2]) then
+            text_dst = text_dst + text_spr
+            dtcol_r = dtcol_r - 1
+            if dtcol_r < 150 then dtcol_r = 150 end
+            dtcol_g = dtcol_g + 1
+            if dtcol_g > 210 then dtcol_g = 210 end
+            renderer.text(screen_x + (scope_anim * 0.40), screen_y + 41 + text_dst, dtcol_r, dtcol_g, dtcol_b, 255 - nade_alpha , "-c", nil, "DT")
+        else
+            dtcol_r = 200
+            dtcol_g = 70
+            dtcol_b = 70
+        end
+        if ui.get(menu.freestand[2]) then
+            text_dst = text_dst + text_spr
+            renderer.text(screen_x + (scope_anim * 0.40), screen_y + 41 + text_dst, 255, 255, 255, 255 - nade_alpha , "-c", nil, "FS")
+        end
+        if ui.get(menu.fakeduck) then
+            text_dst = text_dst + text_spr
+            renderer.text(screen_x + (scope_anim * 0.64), screen_y + 41 + text_dst, 255, 255, 255, 255 - nade_alpha , "-c", nil, "DUCK")
+        end
+
+
     elseif ui.get(lua.visuals.crosshair) == "Modern" then
 
         local packed_text = animate_text(globals.curtime(), "  "..string.upper(vis_tables.render_strings[1]), vis_tables.cols.crosshair[1], vis_tables.cols.crosshair[2], vis_tables.cols.crosshair[3], vis_tables.cols.crosshair[4] - nade_alpha)
@@ -3356,10 +3404,10 @@ local function indicators(arg)
     local players = get_all_players(true)
 
     local real_state = getstate(air, duck, math.sqrt(xv*xv + yv*yv + zv*zv), (ui.get(menu.slowmotion[1]) and ui.get(menu.slowmotion[2])))
-    
+    local mainstring = animate_text(globals.curtime(), "//debug panel - evade (debug)", vis_tables.cols.other[1], vis_tables.cols.other[2], vis_tables.cols.other[3], vis_tables.cols.other[4])
 
     if getcombo(lua.visuals.other, "Debug Panel") then
-        renderer.text(screen_x * 1.5, screen_y / 2.7, 255, 255, 255, math.abs(1 * math.cos(2 * math.pi * globals.curtime() / 4)) * (220), nil, nil, "//debug panel - evade (debug)")
+        renderer.text(screen_x * 1.5, screen_y / 2.7, 255, 255, 255, math.abs(1 * math.cos(2 * math.pi * globals.curtime() / 4)) * (220), nil, nil, unpack(mainstring))
         if anti_aim.get_tickbase_shifting() > 1 then
             debug_align_multiplier = debug_align_multiplier + debug_align_stat
             renderer.text(screen_x * 1.5, screen_y / 2.7 + debug_align_multiplier, 255, 255, 255, 220, nil, nil, "tickbase shifting: "..anti_aim.get_tickbase_shifting())
@@ -3380,24 +3428,148 @@ local function indicators(arg)
 
 
 
+
+
+
+end
+local function lerp_color(c1, c2, t)
+    local r = math_floor(c1[1] * (1 - t) + c2[1] * t + 0.5)
+    local g = math_floor(c1[2] * (1 - t) + c2[2] * t + 0.5)
+    local b = math_floor(c1[3] * (1 - t) + c2[3] * t + 0.5)
+    local a = math_floor(c1[4] * (1 - t) + c2[4] * t + 0.5)
+
+    return { r, g, b, a }
+end
+
+local function rectangle_gradient(x, y, w, h, precision, t_left, t_right, b_left, b_right)
+    if w < h then
+        for i = 1, w, precision do
+            local t = (i - 1 + 0.5) / (w - 1 + 0.5)
+            local clr = lerp_color(t_left, t_right, t)
+            local clr2 = lerp_color(b_left, b_right, t)
+            renderer.gradient(x + i - 1, y, precision, h, clr[1], clr[2], clr[3], clr[4], clr2[1], clr2[2], clr2[3], clr2[4], false)
+        end
+    else
+        for i = 1, h, precision do 
+            local t = (i - 1 + 0.5) / (h - 1 + 0.5)
+            local clr = lerp_color(t_left, b_left, t)
+            local clr2 = lerp_color(t_right, b_right, t)
+            renderer.gradient(x, y + i - 1, w, precision, clr[1], clr[2], clr[3], clr[4], clr2[1], clr2[2], clr2[3], clr2[4], true)
+        end
+    end
 end
 
 local function debug_render()
 
 
-    local localplayer = entity.get_local_player()
+    local lp = entity.get_local_player()
     local screensize = { client.screen_size() }
     local center = { screensize[1] / 2, screensize[2] / 2 }
     local screen_x = center[1]
     local screen_y = center[2]
     local ss = { screensize[1] / 2, screensize[2] / 2 }
-    local valid = localplayer ~= nil and entity.is_alive(localplayer)
-    local scoped
-    local resume_scope
-
+    local valid = lp ~= nil and entity.is_alive(lp)
     if not valid then
         return
     end
+    local scoped
+    local resume_scope
+    local le_log = { ui.get(lua.visuals.colpick3) }
+    local weapon = entity.get_player_weapon(lp)
+    local weapon_info = csgo_weapons(weapon)
+    local air = bit.band(entity.get_prop(lp, "m_fFlags"), 1) == 0
+    local xv, yv, zv = entity.get_prop(lp, "m_vecVelocity")
+    local vvelocity = math.sqrt(xv * xv + yv * yv + zv * zv)
+    local duck = (entity.get_prop(lp, "m_flDuckAmount") > 0.1)
+    local team = (entity.get_prop(lp, "m_iTeamNum") == 2 and "t" or "ct")
+    local lp_hp = entity.get_prop(lp, 'm_iHealth')
+    local aalpha = math.abs(1 * math.cos(2 * math.pi * globals.curtime() / 4)) * (255)
+
+
+
+    -- Watermark--------------
+
+    renderer.circle(screen_x * 2 - 180, 21, 50, 50, 50, 255, 10, 180, 0.5)
+    renderer.circle(screen_x * 2 - 30, 21, 50, 50, 50, 255, 10, 0, 0.5)
+    renderer.rectangle(screen_x * 2 - 180, 11, 150, 19, 50, 50, 50, 255)
+    -- Overlay
+
+    renderer.circle_outline(screen_x * 2 - 180, 21, le_log[1], le_log[2], le_log[3], 80, 10, 90, 0.5, 1)
+    renderer.circle_outline(screen_x * 2 - 30, 21, le_log[1], le_log[2], le_log[3], 80, 10, 270, 0.5, 1)
+
+    
+
+
+    --Glow1-----------------------------------------------------
+    renderer.circle_outline(screen_x * 2 - 180, 21, le_log[1], le_log[2], le_log[3], 100, 11, 90, 0.5, 1)
+    renderer.circle_outline(screen_x * 2 - 30, 21, le_log[1], le_log[2], le_log[3], 100, 11, 270, 0.5, 1)
+    renderer.rectangle(screen_x * 2 - 180, 10, 150, 1, le_log[1], le_log[2], le_log[3], 100)
+    renderer.rectangle(screen_x * 2 - 180, 31, 150, 1, le_log[1], le_log[2], le_log[3], 100)
+    --Glow2
+    renderer.circle_outline(screen_x * 2 - 180, 21, le_log[1], le_log[2], le_log[3], 85, 12, 90, 0.5, 1)
+    renderer.circle_outline(screen_x * 2 - 30, 21, le_log[1], le_log[2], le_log[3], 85, 12, 270, 0.5, 1)
+    renderer.rectangle(screen_x * 2 - 180, 9, 150, 1, le_log[1], le_log[2], le_log[3], 85)
+    renderer.rectangle(screen_x * 2 - 180, 32, 150, 1, le_log[1], le_log[2], le_log[3], 85)
+    --Glow3
+    renderer.circle_outline(screen_x * 2 - 180, 21, le_log[1], le_log[2], le_log[3], 70, 13, 90, 0.5, 1)
+    renderer.circle_outline(screen_x * 2 - 30, 21, le_log[1], le_log[2], le_log[3], 70, 13, 270, 0.5, 1)
+    renderer.rectangle(screen_x * 2 - 180, 8, 150, 1, le_log[1], le_log[2], le_log[3], 70)
+    renderer.rectangle(screen_x * 2 - 180, 33, 150, 1, le_log[1], le_log[2], le_log[3], 70)
+    --Glow4
+    renderer.circle_outline(screen_x * 2 - 180, 21, le_log[1], le_log[2], le_log[3], 55, 14, 90, 0.5, 1)
+    renderer.circle_outline(screen_x * 2 - 30, 21, le_log[1], le_log[2], le_log[3], 55, 14, 270, 0.5, 1)
+    renderer.rectangle(screen_x * 2 - 180, 7, 150, 1, le_log[1], le_log[2], le_log[3], 55)
+    renderer.rectangle(screen_x * 2 - 180, 34, 150, 1, le_log[1], le_log[2], le_log[3], 55)
+    --Glow5
+    renderer.circle_outline(screen_x * 2 - 180, 21, le_log[1], le_log[2], le_log[3], 40, 15, 90, 0.5, 1)
+    renderer.circle_outline(screen_x * 2 - 30, 21, le_log[1], le_log[2], le_log[3], 40, 15, 270, 0.5, 1)
+    renderer.rectangle(screen_x * 2 - 180, 6, 150, 1, le_log[1], le_log[2], le_log[3], 40)
+    renderer.rectangle(screen_x * 2 - 180, 35, 150, 1, le_log[1], le_log[2], le_log[3], 40)
+    --Glow6
+    renderer.circle_outline(screen_x * 2 - 180, 21, le_log[1], le_log[2], le_log[3], 30, 16, 90, 0.5, 1)
+    renderer.circle_outline(screen_x * 2 - 30, 21, le_log[1], le_log[2], le_log[3], 30, 16, 270, 0.5, 1)
+    renderer.rectangle(screen_x * 2 - 180, 5, 150, 1, le_log[1], le_log[2], le_log[3], 30)
+    renderer.rectangle(screen_x * 2 - 180, 36, 150, 1, le_log[1], le_log[2], le_log[3], 30)
+    --Glow7
+    renderer.circle_outline(screen_x * 2 - 180, 21, le_log[1], le_log[2], le_log[3], 20, 17, 90, 0.5, 1)
+    renderer.circle_outline(screen_x * 2 - 30, 21, le_log[1], le_log[2], le_log[3], 20, 17, 270, 0.5, 1)
+    renderer.rectangle(screen_x * 2 - 180, 4, 150, 1, le_log[1], le_log[2], le_log[3], 20)
+    renderer.rectangle(screen_x * 2 - 180, 37, 150, 1, le_log[1], le_log[2], le_log[3], 20)
+    --Glow8
+    renderer.circle_outline(screen_x * 2 - 180, 21, le_log[1], le_log[2], le_log[3], 15, 18, 90, 0.5, 1)
+    renderer.circle_outline(screen_x * 2 - 30, 21, le_log[1], le_log[2], le_log[3], 15, 18, 270, 0.5, 1)
+    renderer.rectangle(screen_x * 2 - 180, 3, 150, 1, le_log[1], le_log[2], le_log[3], 15)
+    renderer.rectangle(screen_x * 2 - 180, 38, 150, 1, le_log[1], le_log[2], le_log[3], 15)
+    --Glow9
+    renderer.circle_outline(screen_x * 2 - 180, 21, le_log[1], le_log[2], le_log[3], 10, 19, 90, 0.5, 1)
+    renderer.circle_outline(screen_x * 2 - 30, 21, le_log[1], le_log[2], le_log[3], 10, 19, 270, 0.5, 1)
+    renderer.rectangle(screen_x * 2 - 180, 2, 150, 1, le_log[1], le_log[2], le_log[3], 10)
+    renderer.rectangle(screen_x * 2 - 180, 39, 150, 1, le_log[1], le_log[2], le_log[3], 10)
+
+
+    renderer.rectangle(screen_x * 2 - 180, 11, 150, 1, le_log[1], le_log[2], le_log[3], 80)
+    renderer.rectangle(screen_x * 2 - 180, 30, 150, 1, le_log[1], le_log[2], le_log[3], 80)
+
+    -- Anims
+    renderer.circle_outline(screen_x * 2 - 180, 21, le_log[1], le_log[2], le_log[3],  math.min(vvelocity / 1.3, 255), 10, 90, math.min(vvelocity / 300, 0.5), 1)
+    renderer.circle_outline(screen_x * 2 - 30, 21, le_log[1], le_log[2], le_log[3],  math.min(vvelocity / 1.3, 255), 10, 270, math.min(vvelocity / 300, 0.5), 1)
+
+    renderer.rectangle(screen_x * 2 - 180, 11, 150, 1, le_log[1], le_log[2], le_log[3], math.min(vvelocity / 1.3, 255))
+    renderer.rectangle(screen_x * 2 - 180, 30, math.min(vvelocity / 3, 150), 1, le_log[1], le_log[2], le_log[3], math.min(vvelocity / 1.3, 255))
+
+
+    -- Over top for anim
+    renderer.rectangle(screen_x * 2 - 180, 11, 150 - math.min(vvelocity / 3, 150), 1, 50, 50, 50, 255)
+    renderer.rectangle(screen_x * 2 - 180, 11, 150 - math.min(vvelocity / 3, 150), 1, le_log[1], le_log[2], le_log[3], 80)
+
+
+    renderer.text(screen_x*2 - 181, 14, math.min(le_log[1] + 40, 255), math.min(le_log[2] + 40, 255), math.min(le_log[3] + 40, 255), aalpha, "d", nil, "evade")
+
+    renderer.text(screen_x*2 - 181 + renderer.measure_text("d", "evade    "), 14, 255, 255, 255, 255, "d", nil, "<>")
+    renderer.text(screen_x*2 - 181 + renderer.measure_text("d", "evade    <>    "), 14, 190, 190, 190, 255, "d", nil, string.lower(curr_build))
+    renderer.text(screen_x*2 - 181 + renderer.measure_text("d", "evade    <>    "..string.lower(curr_build).."    "), 14, 255, 255, 255, 255, "d", nil, "<>")
+    renderer.text(screen_x*2 - 181 + renderer.measure_text("d", "evade    <>    "..string.lower(curr_build).."    <>    "), 14, 190, 190, 190, 255, "d", nil, "ms: "..math.floor(client.real_latency() * 100) )
+    --------------------------
 
     if flickvars.can_execute == true then
         renderer.gradient(screen_x - 25, screen_y / 3 - 7, 54, 25, 255, 255, 255, 90, 230, 190, 190, 20, true)
@@ -3520,12 +3692,13 @@ auto_save = ui.new_button("AA", "Anti-aimbot angles", "\aE8E8E8FFPush current se
 
     notify.new_bottom(255, 255, 255, {{"Pushed current settings to "}, {"\"on-load\"", true}, {"!"}})
 end)
-
+local aiywdgiyawd = 1
 client.set_event_callback("console_input", function(text)
 
-    
-    if text == "load" then
 
+    if text == "/load" then
+        notify.new_bottom(255, 255, 255, {{"Settings Loaded!"}})
+        print("Ur Saved Settings Have Successfully Been Force Loaded")
         if readfile("evade_autosave.txt") ~= nil then
             cfg_value = json.parse(readfile("evade_autosave.txt"))
             for k, v in pairs(cfg_value) do
@@ -3661,10 +3834,6 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.info.label3, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
     ui.set_visible(lua.info.label4, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
     ui.set_visible(lua.info.label5, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.info.label6, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.info.label7, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.info.label8, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
-    ui.set_visible(lua.info.label9, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
     ui.set_visible(lua.info.label10, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
     ui.set_visible(lua.info.reset_login, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
     ui.set_visible(lua.info.get_discord, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
