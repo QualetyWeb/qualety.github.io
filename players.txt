@@ -421,7 +421,7 @@ local v_left, v_right = Vector3(0, 0, 0), Vector3(0, 0, 0)
 local l_dmg, r_dmg, c_dmg = 0, 0, 0
 
 local o_scan_fineness = 20
-local o_scan_length = 130
+local o_scan_length = 10
 --DEBUG END;
 ffi.cdef[[
     void* __stdcall URLDownloadToFileA(void* LPUNKNOWN, const char* LPCSTR, const char* LPCSTR2, int a, int LPBINDSTATUSCALLBACK);
@@ -553,6 +553,7 @@ local lua = {
         fs_key = ui.new_hotkey("AA", "Other", "\nFreestanding Bind", true),
         sh_fs = ui.new_checkbox("AA", "Other", "\aBBC0F3FFEvade Freestand", {"Default"}),
         shfs_key = ui.new_hotkey("AA", "Other", "\ndwdwd", true),
+        fs_sense = ui.new_slider("AA", "Other", "Freestanding Sensitivity", 0, 300, 120),
         osaa = ui.new_checkbox("AA", "Other", "\aBBC0F3FFOn shot anti-aim", {"Default"}),
         osaa_key = ui.new_hotkey("AA", "Other", "\nOSAA BIND", true),
     },
@@ -581,6 +582,7 @@ local lua = {
         accuracy = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFTimes Loaded: ".."0"),
         times_hit = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFTimes Hit"),
         times_missed = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFTimes Missed"),
+        disablelogs = ui.new_checkbox("AA", "Anti-aimbot angles", "Disable Logs", true)
 
     },
 
@@ -898,6 +900,7 @@ local notify = (function()
     
 end)()
 client.set_event_callback("bomb_planted",function()
+    if ui.get(lua.info.disablelogs) then return end
     notify.new_bottom(255, 255, 255,{ {"⚠ Bomb has been planted!", true} })
 end)
 
@@ -1103,7 +1106,7 @@ local func = {
 
 
 local function shot_log(event)
-
+    if ui.get(lua.info.disablelogs) then return end
     if entity.get_local_player() == nil then return end
     local enemy = client.userid_to_entindex(event.userid)
     local lp = entity.get_local_player()
@@ -1149,7 +1152,7 @@ client.set_event_callback("bullet_impact", function(event)
 end)
 
 client.set_event_callback("round_end", function()
-
+    if ui.get(lua.info.disablelogs) then return end
     notify.new_bottom(255, 255, 255,{ {"Anti-aim reset due to round end"} })
 
     new_tbl.old_hp = 100
@@ -1217,7 +1220,7 @@ local elogs = {} do
                 fired_shot.player, hitgroup, damage, fired_shot.backtrack
 
             )
-
+            if ui.get(lua.info.disablelogs) then return end
             notify.new_bottom(255, 255, 255, { { hitstring } })
         end
 
@@ -1242,7 +1245,7 @@ local elogs = {} do
                 fired_shot.player, hitgroup, e.reason, fired_shot.backtrack
 
             )
-
+            if ui.get(lua.info.disablelogs) then return end
             notify.new_bottom(255, 255, 255, { { hitstring } })
         end
 
@@ -2032,13 +2035,13 @@ local function pre_prediction_logic()
 
         ]]
 
-		while l_dmg < 1 and l_add < o_scan_length do
+		while l_dmg < 1 and l_add < ui.get(lua.home.fs_sense) do
 			v_left = v_eye_local + a_left * l_add
 			l_id, l_dmg = client.trace_bullet(closestplayer, v_eye_enemy.x, v_eye_enemy.y, v_eye_enemy.z, v_left.x , v_left.y, v_left.z)
 			l_add = l_add + o_scan_fineness
 		end
 
-		while r_dmg < 1 and r_add < o_scan_length do
+		while r_dmg < 1 and r_add < ui.get(lua.home.fs_sense) do
 			v_right = v_eye_local + a_right * r_add
 			r_id, r_dmg = client.trace_bullet(closestplayer, v_eye_enemy.x, v_eye_enemy.y, v_eye_enemy.z, v_right.x , v_right.y, v_right.z)
 			r_add = r_add + o_scan_fineness
@@ -3712,7 +3715,7 @@ end)
 local aiywdgiyawd = 1
 client.set_event_callback("console_input", function(text)
 
-
+    if ui.get(lua.info.disablelogs) then return end
     if text == "/load" then
         notify.new_bottom(255, 255, 255, {{"Settings Loaded!"}})
         print("Ur Saved Settings Have Successfully Been Force Loaded")
@@ -3861,6 +3864,7 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.info.hits, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
 
     ui.set_visible(lua.info.times_missed, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
+    ui.set_visible(lua.info.disablelogs, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
     ui.set_visible(lua.info.times_hit, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
 
     ui.set_visible(lua.info.times_loaded, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
