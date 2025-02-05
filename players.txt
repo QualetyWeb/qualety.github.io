@@ -1568,7 +1568,7 @@ local function create_config()
     table.insert(configs.list, name)
     save_config_list()
     ui.update(config_ui.list, configs.list)
-    print("Created config: " .. name)
+    notify.new_bottom(255, 255, 255, {{"Created Config: ", true}, {name}})
 end
 
 local function save_config()
@@ -1645,7 +1645,7 @@ local function save_config()
     end
 
     writefile("evadecfg_" .. name .. ".txt", json.stringify(config))
-    print("Saved config: " .. name)
+    notify.new_bottom(255, 255, 255, {{"Saved Config: ", true}, {name}})
 end
 
 local function load_config()
@@ -1707,7 +1707,7 @@ local function load_config()
         end
     end
 
-    print("Loaded config: " .. name)
+    notify.new_bottom(255, 255, 255, {{"Loaded Config: ", true}, {name}})
 end
 local function delete_config()
     local selected = ui.get(config_ui.list)
@@ -1724,7 +1724,7 @@ local function delete_config()
     save_config_list()
     ui.update(config_ui.list, configs.list)
     
-    print("Deleted config: " .. name)
+    notify.new_bottom(255, 255, 255, {{"Deleted Config: ", true}, {name}})
 end
 
 -- Set up callbacks
@@ -1740,7 +1740,7 @@ local config_sys = {
     
     
 
-    export_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFExport  ", function()
+    export_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFExport to clipboard  ", function()
         local config = {
             menu = {},
             lua = {
@@ -1829,7 +1829,7 @@ local config_sys = {
         end
     end),
 
-    import_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFImport  ", function()
+    import_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFImport from clipboard", function()
         local success, result = pcall(function()
             local encoded_config = clipboard.get():gsub("evade_", "")
             return json.parse(base64.decode(encoded_config))
