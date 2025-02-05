@@ -23,7 +23,13 @@ local new_tbl = {
     timer = 0
 }
 
-
+if readfile("evade_cfglist.txt") == nil then
+    writefile("evade_cfglist.txt", "[]")
+end
+local configs = {
+    list = {},
+    selected = nil
+}
 client.set_event_callback("paint_ui", function()
 
     if entity.get_local_player() == nil then return end
@@ -605,7 +611,6 @@ local lua = {
 
         hidehead_drop = ui.new_multiselect("AA", "Anti-aimbot angles", "Hide head conditions", {"On Knife", "On Zeus"}),
         --[[
-        
         leftlabel = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFLeft \aE8E8E8FF Manual\aBBC0F3FF ↰"),
         lefthotkey = ui.new_hotkey("AA", "Anti-aimbot angles", "\nBind", true),
         rightlabel = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFRight \aE8E8E8FF Manual\aBBC0F3FF ↱"),
@@ -614,10 +619,8 @@ local lua = {
         forwardhotkey = ui.new_hotkey("AA", "Anti-aimbot angles", "\nBind", true),
         resetlabel = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FFReset \aE8E8E8FF Manual\aBBC0F3FF ↻"),
         resethotkey = ui.new_hotkey("AA", "Anti-aimbot angles", "\nBind", true),
-        
         ]]
         --Manuals
-
 
     },
 
@@ -1456,10 +1459,286 @@ for i, v in next, states do
 end
 
 
+local config_ui = {
+    label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFConfig System"),
+    list = ui.new_listbox("AA", "Anti-aimbot angles", "Configs", {}),
+    name = ui.new_textbox("AA", "Anti-aimbot angles", "Config name"),
+    create = ui.new_button("AA", "Anti-aimbot angles", "Create", function() end),
+    save = ui.new_button("AA", "Anti-aimbot angles", "Save", function() end),
+    load = ui.new_button("AA", "Anti-aimbot angles", "Load", function() end),
+    delete = ui.new_button("AA", "Anti-aimbot angles", "Delete", function() end),
+}
+
+local function save_config_list()
+    writefile("evade_cfglist.txt", json.stringify(configs.list))
+end
+
+local function load_config_list()
+    local data = readfile("evade_cfglist.txt")
+    if data ~= nil and data ~= "" then
+        local success, result = pcall(json.parse, data)
+        if success and result then
+            configs.list = result
+        else
+            configs.list = {}
+        end
+    else
+        configs.list = {}
+        writefile("evade_cfglist.txt", "[]")
+    end
+    return configs.list
+end
+local function create_config()
+    local name = ui.get(config_ui.name)
+    if name == "" then
+        print("Please enter a config name")
+        return
+    end
+
+    -- Create comprehensive config data
+    local config = {
+        menu = {},
+        lua = {
+            preset = {},
+            aa_additions = {},
+            def = {},
+            home = {},
+            visuals = {}
+        },
+        antiaim = {},
+        colors = {}
+    }
+
+    -- Save lua elements
+    for _, section in ipairs({"preset", "aa_additions", "def", "home", "visuals"}) do
+        for key, value in pairs(lua[section]) do
+            if type(value) ~= "userdata" and type(value) ~= "function" then
+                if section == "visuals" and (key == "colpick1" or key == "colpick2" or key == "colpick3") then
+                    local r, g, b, a = ui.get(value)
+                    config.lua[section][key] = {r = r, g = g, b = b, a = a}
+                else
+                    local success, result = pcall(ui.get, value)
+                    if success then
+                        config.lua[section][key] = result
+                    end
+                end
+            end
+        end
+    end
+
+    -- Save antiaim states
+    for i = 1, #states do
+        config.antiaim[i] = {}
+        for key, value in pairs(antiaim[i]) do
+            if type(value) ~= "userdata" and type(value) ~= "function" then
+                local success, result = pcall(ui.get, value)
+                if success then
+                    config.antiaim[i][key] = result
+                end
+            end
+        end
+    end
+
+    -- Save menu elements
+    for key, value in pairs(menu) do
+        if type(value) == "table" then
+            config.menu[key] = {}
+            for i, element in ipairs(value) do
+                if type(element) ~= "userdata" and type(element) ~= "function" then
+                    local success, result = pcall(ui.get, element)
+                    if success then
+                        config.menu[key][i] = result
+                    end
+                end
+            end
+        else
+            if type(value) ~= "userdata" and type(value) ~= "function" then
+                local success, result = pcall(ui.get, value)
+                if success then
+                    config.menu[key] = result
+                end
+            end
+        end
+    end
+
+    -- Save config to file
+    writefile("evadecfg_" .. name .. ".txt", json.stringify(config))
+    
+    -- Update list
+    table.insert(configs.list, name)
+    save_config_list()
+    ui.update(config_ui.list, configs.list)
+    print("Created config: " .. name)
+end
+
+local function save_config()
+    local selected = ui.get(config_ui.list)
+    if selected == nil then return end
+    
+    local name = configs.list[selected + 1]
+    if name == nil then return end
+
+    -- Create config data
+    local config = {
+        menu = {},
+        lua = {
+            preset = {},
+            aa_additions = {},
+            def = {},
+            home = {},
+            visuals = {}
+        },
+        antiaim = {},
+        colors = {}
+    }
+
+    -- Save lua elements
+    for _, section in ipairs({"preset", "aa_additions", "def", "home", "visuals"}) do
+        for key, value in pairs(lua[section]) do
+            if type(value) ~= "userdata" and type(value) ~= "function" then
+                if section == "visuals" and (key == "colpick1" or key == "colpick2" or key == "colpick3") then
+                    local r, g, b, a = ui.get(value)
+                    config.lua[section][key] = {r = r, g = g, b = b, a = a}
+                else
+                    local success, result = pcall(ui.get, value)
+                    if success then
+                        config.lua[section][key] = result
+                    end
+                end
+            end
+        end
+    end
+
+    -- Save antiaim states
+    for i = 1, #states do
+        config.antiaim[i] = {}
+        for key, value in pairs(antiaim[i]) do
+            if type(value) ~= "userdata" and type(value) ~= "function" then
+                local success, result = pcall(ui.get, value)
+                if success then
+                    config.antiaim[i][key] = result
+                end
+            end
+        end
+    end
+
+    -- Save menu elements
+    for key, value in pairs(menu) do
+        if type(value) == "table" then
+            config.menu[key] = {}
+            for i, element in ipairs(value) do
+                if type(element) ~= "userdata" and type(element) ~= "function" then
+                    local success, result = pcall(ui.get, element)
+                    if success then
+                        config.menu[key][i] = result
+                    end
+                end
+            end
+        else
+            if type(value) ~= "userdata" and type(value) ~= "function" then
+                local success, result = pcall(ui.get, value)
+                if success then
+                    config.menu[key] = result
+                end
+            end
+        end
+    end
+
+    writefile("evadecfg_" .. name .. ".txt", json.stringify(config))
+    print("Saved config: " .. name)
+end
+
+local function load_config()
+    local selected = ui.get(config_ui.list)
+    if selected == nil then return end
+    
+    local name = configs.list[selected + 1]
+    if name == nil then return end
+
+    local data = readfile("evadecfg_" .. name .. ".txt")
+    if not data then return end
+
+    local success, config = pcall(json.parse, data)
+    if not success or not config then
+        print("Failed to load config")
+        return
+    end
+
+    -- Load lua elements
+    for _, section in ipairs({"preset", "aa_additions", "def", "home", "visuals"}) do
+        for key, value in pairs(config.lua[section] or {}) do
+            if lua[section][key] then
+                if section == "visuals" and (key == "colpick1" or key == "colpick2" or key == "colpick3") then
+                    if type(value) == "table" and value.r and value.g and value.b and value.a then
+                        pcall(ui.set, lua[section][key], value.r, value.g, value.b, value.a)
+                    end
+                else
+                    pcall(ui.set, lua[section][key], value)
+                end
+            end
+        end
+    end
+
+    -- Load antiaim states
+    for i = 1, #states do
+        if config.antiaim[i] then
+            for key, value in pairs(config.antiaim[i]) do
+                if antiaim[i][key] and type(value) ~= "userdata" and type(value) ~= "function" then
+                    pcall(ui.set, antiaim[i][key], value)
+                end
+            end
+        end
+    end
+
+    -- Load menu elements
+    for key, value in pairs(config.menu or {}) do
+        if menu[key] then
+            if type(menu[key]) == "table" then
+                for i, setting in ipairs(value) do
+                    if menu[key][i] and type(setting) ~= "userdata" and type(setting) ~= "function" then
+                        pcall(ui.set, menu[key][i], setting)
+                    end
+                end
+            else
+                if type(value) ~= "userdata" and type(value) ~= "function" then
+                    pcall(ui.set, menu[key], value)
+                end
+            end
+        end
+    end
+
+    print("Loaded config: " .. name)
+end
+local function delete_config()
+    local selected = ui.get(config_ui.list)
+    if selected == nil then return end
+    
+    local name = configs.list[selected + 1]
+    if name == nil then return end
+
+    -- Delete config file
+    writefile("evadecfg_" .. name .. ".txt", "")
+    
+    -- Update list
+    table.remove(configs.list, selected + 1)
+    save_config_list()
+    ui.update(config_ui.list, configs.list)
+    
+    print("Deleted config: " .. name)
+end
+
+-- Set up callbacks
+ui.set_callback(config_ui.create, create_config)
+ui.set_callback(config_ui.save, save_config)
+ui.set_callback(config_ui.load, load_config)
+ui.set_callback(config_ui.delete, delete_config)
+
+load_config_list()
+ui.update(config_ui.list, configs.list)
 
 local config_sys = {
-    label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFConfig System"),
-    spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
+    
+    
 
     export_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFExport  ", function()
         local config = {
@@ -1628,9 +1907,7 @@ local config_sys = {
         end
 
         notify.new_bottom(255, 255, 255, {{"Imported", true}, {" config"}})
-    end),
-
-    spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n ")
+    end)
 }
 
 
@@ -1653,9 +1930,15 @@ local function fix_antiaim_visibility()
     ui.set_visible(config_sys.export_cfg, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
     ui.set_visible(config_sys.import_cfg, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
     --ui.set_visible(config_sys.default_cfg, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
-    ui.set_visible(config_sys.spacer1, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
-    ui.set_visible(config_sys.spacer2, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
-    ui.set_visible(config_sys.label1, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
+    ui.set_visible(config_ui.label1, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
+
+
+    ui.set_visible(config_ui.list, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System" and has_access)
+    ui.set_visible(config_ui.name, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System" and has_access)
+    ui.set_visible(config_ui.create, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System" and has_access)
+    ui.set_visible(config_ui.save, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System" and has_access)
+    ui.set_visible(config_ui.load, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System" and has_access)
+    ui.set_visible(config_ui.delete, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System" and has_access)
     
 
     ui.set_visible(lua.preset.label1, ui.get(lua.home.manager) == "\aF48080FF⛔ \aE8E8E8FFAnti-Aimbot" and when_preset and has_access)
@@ -4028,8 +4311,6 @@ end)
 -- Initial load on script start
 autosave_func()
 
-
-
 client.set_event_callback("paint_ui", function()
     ui.set(menu.enabled, true)
     on_load()
@@ -4037,7 +4318,6 @@ client.set_event_callback("paint_ui", function()
     local has_access = login_details.access == true
 
     ui.set_visible(auto_save, ui.get(lua.home.manager) == "\aBBC0F3FF⚙️ \aE8E8E8FFConfig System")
-
 
     ui.set_visible(login_menu.no_access_msg1, login_details.access == false and login_details.is_registered == true)
     ui.set_visible(login_menu.login_spacer, login_details.access == false and login_details.is_registered == true)
@@ -4060,9 +4340,7 @@ client.set_event_callback("paint_ui", function()
 
     --ui.set_visible(no_access_msg2, get_access() == false)
     indicators()
-
     fix_antiaim_visibility()
-
     local menu_vis_val = false
 
     ui.set_visible(menu.fakepeek[1], false);
@@ -4124,15 +4402,12 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.info.times_loaded, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
     ui.set_visible(lua.info.spacer2, ui.get(lua.home.manager) == "\aBBC0F3FF❓ \aE8E8E8FFInfo" and has_access)
 
-
-
     ui.set_visible(lua.visuals.spacer1,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and has_access)
     ui.set_visible(lua.visuals.spacer2,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and has_access)
     ui.set_visible(lua.visuals.spacer3,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and has_access)
     ui.set_visible(lua.visuals.spacer4,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and has_access)
     ui.set_visible(lua.visuals.spacer5,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and has_access)
     ui.set_visible(lua.visuals.spacer6,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and has_access)
-
 
     ui.set_visible(lua.visuals.toggle,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals")
     ui.set_visible(lua.visuals.label1,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
@@ -4144,6 +4419,5 @@ client.set_event_callback("paint_ui", function()
     ui.set_visible(lua.visuals.crosshair,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
     ui.set_visible(lua.visuals.other,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
     ui.set_visible(lua.visuals.logs,ui.get(lua.home.manager) == "\aBBC0F3FF✎ \aE8E8E8FFVisuals" and ui.get(lua.visuals.toggle) and has_access)
-
     debug_render()
 end)
