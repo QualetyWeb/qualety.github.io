@@ -1455,154 +1455,183 @@ for i, v in next, states do
     }
 end
 
-local data = {
-    bools = {
 
-    },
-
-    tables = {
-
-    },
-
-    ints = {
-		aa_switch
-    },
-
-    numbers = {
-        
-    }
-}
-
-
-function pairsort(t)  
-	local a = {}  
-	for n in pairs(t) do    
-		a[#a+1] = n  
-	end  
-	table.sort(a)  
-	local i = 0  
-	return function()  
-		i = i + 1  
-		return a[i], t[a[i]]  
-	end  
-end 
-
-
-for i, v in pairsort(states) do
-    for _, v in pairsort(antiaim[i]) do
-        if type(v) == "boolean" then
-            table.insert(data.bools, v)
-        elseif type(v) == "table" then
-            table.insert(data.tables, v)
-        elseif type(v) == "string" then
-            table.insert(data.ints, v)
-        else
-            table.insert(data.numbers, v)
-        end
-    end
-end
 
 local config_sys = {
     label1 = ui.new_label("AA", "Anti-aimbot angles", "\aBBC0F3FF➤ \aE8E8E8FFConfig System"),
     spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
 
-    export_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFExport  ", function() 
-    
-    
-        local cfg = {}
+    export_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFExport  ", function()
+        local config = {
+            menu = {},
+            lua = {
+                preset = {},
+                aa_additions = {},
+                def = {},
+                home = {},
+                visuals = {}
+            },
+            antiaim = {},
+            colors = {}
+        }
 
-        local Code = {{},{},{},{},{}}
-		for _, bools in pairs(data.bools) do
-			table.insert(Code[1], ui.get(bools))
-		end
-		
-		for _, tables in pairs(data.tables) do
-			table.insert(Code[2], ui.get(tables))
-		end
-		
-		for _, ints in pairs(data.ints) do
-			table.insert(Code[3], ui.get(ints))
-		end
-		
-		for _, numbers in pairs(data.numbers) do
-			table.insert(Code[4], ui.get(numbers))
-		end
-       
-        clipboard.set("evade_"..base64.encode(json.stringify(Code)))
-    
-        notify.new_bottom(255, 255, 255, {{"Exported", true}, {" config"}})
-    
-    
-    
-    end),
-
-    import_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFImport  ", function() 
-    
-    	local Code = clipboard.get():gsub("evade_", "")
-        for k, v in pairs(json.parse(base64.decode(Code))) do
-            k = ({[1] = "bools", [2] = "tables",[3] = "ints",[4] = "numbers"})[k]
-            for k2, v2 in pairs(v) do
-                if (k == "bools") then
-
-                    ui.set(data[k][k2], v2)
-
+        -- Export menu elements
+        for key, value in pairs(menu) do
+            if type(value) == "table" then
+                config.menu[key] = {}
+                for i, element in ipairs(value) do
+                    if type(element) ~= "userdata" and type(element) ~= "function" then
+                        local success, result = pcall(ui.get, element)
+                        if success then
+                            config.menu[key][i] = result
+                        end
+                    end
                 end
-        
-                if (k == "tables") then
-                    ui.set(data[k][k2], v2)
+            else
+                if type(value) ~= "userdata" and type(value) ~= "function" then
+                    local success, result = pcall(ui.get, value)
+                    if success then
+                        config.menu[key] = result
+                    end
                 end
-        
-                if (k == "ints") then
-                    ui.set(data[k][k2], v2)
-                end
-
-                if (k == "numbers") then
-                    ui.set(data[k][k2], v2)
-                end
-              
             end
         end
-    
+
+        -- Export lua elements
+        for _, section in ipairs({"preset", "aa_additions", "def", "home", "visuals"}) do
+            for key, value in pairs(lua[section]) do
+                if type(value) ~= "userdata" and type(value) ~= "function" then
+                    -- Special handling for visual section color pickers
+                    if section == "visuals" and (key == "colpick1" or key == "colpick2" or key == "colpick3") then
+                        local r, g, b, a = ui.get(value)
+                        config.lua[section][key] = {r = r, g = g, b = b, a = a}
+                    else
+                        local success, result = pcall(ui.get, value)
+                        if success then
+                            config.lua[section][key] = result
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Export antiaim states
+        for i = 1, #states do
+            config.antiaim[i] = {}
+            for key, value in pairs(antiaim[i]) do
+                if type(value) ~= "userdata" and type(value) ~= "function" then
+                    -- Check if this is a color picker
+                    local elementType = tostring(value):lower()
+                    if elementType:find("color_picker") then
+                        local success, r, g, b, a = pcall(ui.get, value)
+                        if success then
+                            config.colors["antiaim_" .. i .. "_" .. key] = {r = r, g = g, b = b, a = a}
+                        end
+                    else
+                        local success, result = pcall(ui.get, value)
+                        if success then
+                            config.antiaim[i][key] = result
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Encode and set clipboard with error handling
+        local success, encoded = pcall(function()
+            return "evade_" .. base64.encode(json.stringify(config))
+        end)
+
+        if success then
+            clipboard.set(encoded)
+            notify.new_bottom(255, 255, 255, {{"Exported", true}, {" config"}})
+        else
+            notify.new_bottom(255, 255, 255, {{"Failed to export config"}})
+        end
+    end),
+
+    import_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFImport  ", function()
+        local success, result = pcall(function()
+            local encoded_config = clipboard.get():gsub("evade_", "")
+            return json.parse(base64.decode(encoded_config))
+        end)
+
+        if not success then
+            notify.new_bottom(255, 255, 255, {{"Failed to decode config"}})
+            return
+        end
+
+        local config = result
+
+        -- Import menu elements
+        for key, value in pairs(config.menu or {}) do
+            if menu[key] then
+                if type(menu[key]) == "table" then
+                    for i, setting in ipairs(value) do
+                        if menu[key][i] and type(setting) ~= "userdata" and type(setting) ~= "function" then
+                            pcall(ui.set, menu[key][i], setting)
+                        end
+                    end
+                else
+                    if type(value) ~= "userdata" and type(value) ~= "function" then
+                        pcall(ui.set, menu[key], value)
+                    end
+                end
+            end
+        end
+
+        -- Import lua elements
+        for _, section in ipairs({"preset", "aa_additions", "def", "home", "visuals"}) do
+            for key, value in pairs(config.lua[section] or {}) do
+                if lua[section][key] then
+                    -- Special handling for visual section color pickers
+                    if section == "visuals" and (key == "colpick1" or key == "colpick2" or key == "colpick3") then
+                        if type(value) == "table" and value.r and value.g and value.b and value.a then
+                            pcall(ui.set, lua[section][key], value.r, value.g, value.b, value.a)
+                        end
+                    else
+                        if type(value) ~= "userdata" and type(value) ~= "function" then
+                            pcall(ui.set, lua[section][key], value)
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Import color settings
+        for id, color in pairs(config.colors or {}) do
+            local section, key = id:match("(.+)_(.+)")
+            if section and key then
+                if section:find("antiaim_") then
+                    local index = tonumber(section:match("antiaim_(%d+)"))
+                    local actualKey = key
+                    if index and antiaim[index] and antiaim[index][actualKey] then
+                        pcall(ui.set, antiaim[index][actualKey], color.r, color.g, color.b, color.a)
+                    end
+                else
+                    if lua[section] and lua[section][key] then
+                        pcall(ui.set, lua[section][key], color.r, color.g, color.b, color.a)
+                    end
+                end
+            end
+        end
+
+        -- Import antiaim states
+        for i = 1, #states do
+            if config.antiaim[i] then
+                for key, value in pairs(config.antiaim[i]) do
+                    if antiaim[i][key] and type(value) ~= "userdata" and type(value) ~= "function" then
+                        pcall(ui.set, antiaim[i][key], value)
+                    end
+                end
+            end
+        end
+
         notify.new_bottom(255, 255, 255, {{"Imported", true}, {" config"}})
     end),
-    --[[
-    
-        default_cfg = ui.new_button("AA", "Anti-aimbot angles", "  \aBBC0F3FFLoad Default  ", function() 
-        for k, v in pairs(json.parse(base64.decode("evade_W3t9LHt9LHt9LFsxLDQsMSwzMSwtMzEsNywiSml0dGVyIiwiR2FtZXNlbnNlIiw1OCx0cnVlLCJHaG9zdCIsMzIsIlJhbmRvbWl6ZSIsNDYsIk9mZiIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLDEzLGZhbHNlLDEzLCJTaW5nbGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEsMSwxLDQsMjgsLTMyLDMsIlNsb3ciLCJHYW1lc2Vuc2UiLDAsdHJ1ZSwiR2hvc3QiLDEsIlJhbmRvbWl6ZSIsMCwiT2ZmIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZBZGp1c3QgQm9keSBZYXciLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRllhdyBKaXR0ZXIiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkRlc3luYyIsMTgsdHJ1ZSwxMywiRG91YmxlIiwiICIsIiAiLCIgIiwiICIsIiAiLCIgIiw2LDEsMSw0LDM2LC0zMSwtMSwiU2xvdyIsIkdhbWVzZW5zZSIsMCx0cnVlLCJHaG9zdCIsMSwiUmFuZG9taXplIiwwLCJPZmYiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIiwxMCx0cnVlLDE4LCJEb3VibGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDYsMSw4LDIsMzQsLTQwLDIsIlNsb3ciLCJHYW1lc2Vuc2UiLDM2LHRydWUsIkdob3N0IiwxLCJTdGVwIiwwLCJPZmYiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIiwyOCx0cnVlLDIzLCJEb3VibGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEyLDEsNCwxLDEwLC0xMyw1LCJKaXR0ZXIiLCJHYW1lc2Vuc2UiLDU4LHRydWUsIkdob3N0Iiw1MCwiUmFuZG9taXplIiwwLCJPZmYiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIiwxMSx0cnVlLDExLCJTaW5nbGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDEsMSw0LDEsMzEsLTI5LDYsIkppdHRlciIsIkdhbWVzZW5zZSIsMCx0cnVlLCJHaG9zdCIsMSwiU3RlcCIsLTMsIkNlbnRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGQWRqdXN0IEJvZHkgWWF3IiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZZYXcgSml0dGVyIiwiXHUwMDA3QkJDMEYzRkbinqQgXHUwMDA3RThFOEU4RkZEZXN5bmMiLDIyLHRydWUsMTgsIkRvdWJsZSIsIiAiLCIgIiwiICIsIiAiLCIgIiwiICIsNSwxLDQsMSwzMiwtMzUsOCwiSml0dGVyIiwiR2FtZXNlbnNlIiw1OCx0cnVlLCJHaG9zdCIsMSwiUmFuZG9taXplIiwwLCJPZmYiLCJcdTAwMDdCQkMwRjNGRuKepCBcdTAwMDdFOEU4RThGRkFkanVzdCBCb2R5IFlhdyIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGWWF3IEppdHRlciIsIlx1MDAwN0JCQzBGM0ZG4p6kIFx1MDAwN0U4RThFOEZGRGVzeW5jIiwxNix0cnVlLDE1LCJTaW5nbGUiLCIgIiwiICIsIiAiLCIgIiwiICIsIiAiLDFdLHt9XQ=="))) do
-            k = ({[1] = "bools", [2] = "tables",[3] = "ints",[4] = "numbers"})[k]
-            for k2, v2 in pairs(v) do
-                if (k == "bools") then
-                    ui.set(data[k][k2], v2)
-                end
 
-                if (k == "tables") then
-                    ui.set(data[k][k2], v2)
-                end
-
-                if (k == "ints") then
-                    ui.set(data[k][k2], v2)
-                end
-
-                if (k == "numbers") then
-                    ui.set(data[k][k2], v2)
-                end
-            end
-        end
-
-        notify.new_bottom(255, 255, 255, {{"Loaded "}, {"default", true}, {" config"}})
-    end),
-    
-    ]]
-
-
-    spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
-
-
-
+    spacer2 = ui.new_label("AA", "Anti-aimbot angles", " \n ")
 }
-
-
-
 
 
 
@@ -3766,11 +3795,7 @@ local function debug_render()
 
         renderer.text(screen_x, screen_y / 3, 255, 110, 110, 255, "-c", nil, "DEF // BREAK")
         renderer.text(screen_x, screen_y / 3 + 10, 255, 110, 110, 255, "-c", nil, string.upper(ui.get(lua.def.flick.multiple_flicks)))
-
-
     end
-
-
 end
 --[[
 local function indicators()
@@ -3847,92 +3872,161 @@ end)
 
 
 
+-- Auto-save button
 auto_save = ui.new_button("AA", "Anti-aimbot angles", "\aE8E8E8FFPush current settings on \aBBC0F3FFload", function()
-    local cfg = {}
+    local config = {
+        menu = {},
+        lua = {
+            preset = {},
+            aa_additions = {},
+            def = {},
+            home = {},
+            visuals = {}
+        },
+        antiaim = {}
+    }
 
-    local Code = {{},{},{},{},{}}
-    for _, bools in pairs(data.bools) do
-        table.insert(Code[1], ui.get(bools))
-    end
-    
-    for _, tables in pairs(data.tables) do
-        table.insert(Code[2], ui.get(tables))
-    end
-    
-    for _, ints in pairs(data.ints) do
-        table.insert(Code[3], ui.get(ints))
-    end
-    
-    for _, numbers in pairs(data.numbers) do
-        table.insert(Code[4], ui.get(numbers))
-    end
-    local stringed = json.stringify(Code)
-    writefile("evade_autosave.txt", stringed)
-
-
-    notify.new_bottom(255, 255, 255, {{"Pushed current settings to "}, {"\"on-load\"", true}, {"!"}})
-end)
-local aiywdgiyawd = 1
-client.set_event_callback("console_input", function(text)
-
-    if ui.get(lua.info.disablelogs) then return end
-    if text == "/load" then
-        notify.new_bottom(255, 255, 255, {{"Settings Loaded!"}})
-        print("Ur Saved Settings Have Successfully Been Force Loaded")
-        if readfile("evade_autosave.txt") ~= nil then
-            cfg_value = json.parse(readfile("evade_autosave.txt"))
-            for k, v in pairs(cfg_value) do
-                k = ({[1] = "bools", [2] = "tables",[3] = "ints",[4] = "numbers"})[k]
-                for k2, v2 in pairs(v) do
-                    if (k == "bools") then
-                        ui.set(data[k][k2], v2)
+    -- Save menu elements
+    for key, value in pairs(menu) do
+        if type(value) == "table" then
+            config.menu[key] = {}
+            for i, element in ipairs(value) do
+                if type(element) ~= "userdata" and type(element) ~= "function" then
+                    local success, result = pcall(ui.get, element)
+                    if success then
+                        config.menu[key][i] = result
                     end
-        
-                    if (k == "tables") then
-                        ui.set(data[k][k2], v2)
-                    end
-        
-                    if (k == "ints") then
-                        ui.set(data[k][k2], v2)
-                    end
-        
-                    if (k == "numbers") then
-                        ui.set(data[k][k2], v2)
+                end
+            end
+        else
+            if type(value) ~= "userdata" and type(value) ~= "function" then
+                local success, result = pcall(ui.get, value)
+                if success then
+                    config.menu[key] = result
+                end
+            end
+        end
+    end
+
+    -- Save lua elements
+    for _, section in ipairs({"preset", "aa_additions", "def", "home", "visuals"}) do
+        for key, value in pairs(lua[section]) do
+            if type(value) ~= "userdata" and type(value) ~= "function" then
+                -- Special handling for visual section color pickers
+                if section == "visuals" and (key == "colpick1" or key == "colpick2" or key == "colpick3") then
+                    local r, g, b, a = ui.get(value)
+                    config.lua[section][key] = {r = r, g = g, b = b, a = a}
+                else
+                    local success, result = pcall(ui.get, value)
+                    if success then
+                        config.lua[section][key] = result
                     end
                 end
             end
         end
     end
-end)
 
-
-
-
-if readfile("evade_autosave.txt") ~= nil then
-    cfg_value = json.parse(readfile("evade_autosave.txt"))
-    for k, v in pairs(cfg_value) do
-        k = ({[1] = "bools", [2] = "tables",[3] = "ints",[4] = "numbers"})[k]
-        for k2, v2 in pairs(v) do
-            if (k == "bools") then
-                ui.set(data[k][k2], v2)
-            end
-
-            if (k == "tables") then
-                ui.set(data[k][k2], v2)
-            end
-
-            if (k == "ints") then
-                ui.set(data[k][k2], v2)
-            end
-
-            if (k == "numbers") then
-                ui.set(data[k][k2], v2)
+    -- Save antiaim states
+    for i = 1, #states do
+        config.antiaim[i] = {}
+        for key, value in pairs(antiaim[i]) do
+            if type(value) ~= "userdata" and type(value) ~= "function" then
+                local success, result = pcall(ui.get, value)
+                if success then
+                    config.antiaim[i][key] = result
+                end
             end
         end
     end
+
+    -- Save config with error handling
+    local success, err = pcall(function()
+        writefile("evade_autosave.txt", json.stringify(config))
+    end)
+
+    if success then
+        notify.new_bottom(255, 255, 255, {{"Pushed current settings to "}, {"\"on-load\"", true}, {"!"}})
+    else
+        notify.new_bottom(255, 255, 255, {{"Failed to save config"}})
+    end
+end)
+
+-- Main load function
+local function autosave_func()
+    if readfile("evade_autosave.txt") == nil then
+        return
+    end
+
+    local success, config = pcall(function()
+        return json.parse(readfile("evade_autosave.txt"))
+    end)
+
+    if not success then
+        notify.new_bottom(255, 255, 255, {{"Failed to load config"}})
+        return
+    end
+
+    -- Load menu elements
+    for key, value in pairs(config.menu or {}) do
+        if menu[key] then
+            if type(menu[key]) == "table" then
+                for i, setting in ipairs(value) do
+                    if menu[key][i] and type(setting) ~= "userdata" and type(setting) ~= "function" then
+                        pcall(ui.set, menu[key][i], setting)
+                    end
+                end
+            else
+                if type(value) ~= "userdata" and type(value) ~= "function" then
+                    pcall(ui.set, menu[key], value)
+                end
+            end
+        end
+    end
+
+    -- Load lua elements
+    for _, section in ipairs({"preset", "aa_additions", "def", "home", "visuals"}) do
+        for key, value in pairs(config.lua[section] or {}) do
+            if lua[section][key] then
+                -- Special handling for visual section color pickers
+                if section == "visuals" and (key == "colpick1" or key == "colpick2" or key == "colpick3") then
+                    if type(value) == "table" and value.r and value.g and value.b and value.a then
+                        pcall(ui.set, lua[section][key], value.r, value.g, value.b, value.a)
+                    end
+                else
+                    if type(value) ~= "userdata" and type(value) ~= "function" then
+                        pcall(ui.set, lua[section][key], value)
+                    end
+                end
+            end
+        end
+    end
+
+    -- Load antiaim states
+    for i = 1, #states do
+        if config.antiaim[i] then
+            for key, value in pairs(config.antiaim[i]) do
+                if antiaim[i][key] and type(value) ~= "userdata" and type(value) ~= "function" then
+                    pcall(ui.set, antiaim[i][key], value)
+                end
+            end
+        end
+    end
+
+    notify.new_bottom(255, 255, 255, {{"Settings Loaded!"}})
+    print("Your Saved Settings Have Successfully Been Force Loaded")
 end
 
+-- Load command handler
+client.set_event_callback("console_input", function(text)
+    if ui.get(lua.info.disablelogs) then return end
+    
+    if text == "/load" then
+        autosave_func()
+    end
+end)
 
+-- Initial load on script start
+autosave_func()
 
 
 
