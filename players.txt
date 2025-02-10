@@ -513,7 +513,7 @@ local lua = {
         spacer1 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         def_type = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Yaw Types", {"Desync", "Free-sync", "Experimental Yaw Flicks"}),
 
-
+        
         -- Desync
         def_conds = ui.new_multiselect("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Conditions", {"Standing", "Air-Duck", "Air", "Running", "Duck", "Predict Visible", "Visible", "On Shot", "When Landing", "Unduck"}),
         ignore_fs = ui.new_checkbox("AA", "Anti-aimbot angles", "Ignore freestanding"),
@@ -524,7 +524,8 @@ local lua = {
         spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
         yaw_type = ui.new_combobox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Yaw Types", {"Static", "Jitter", "Slow Jitter", "Spin", "Breaker"}),
         yaw = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Base Yaw", -180, 180, 0),
-        radius = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Radius", -50, 50, 0),
+        leftyaw = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Left", -180, 180, 0),
+        rightyaw = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Right", -180, 180, 0),
         delay = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Speed / Delay", 1, 10, 1),
         spin_radius = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Radius", 0, 360, 0, true, "°"),
         spin_direction = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Direction", 1, 2, 1, true, "*", 1, {[1] = "Left", [2] = "Right"}),
@@ -532,8 +533,8 @@ local lua = {
         breaker_statement1 = ui.new_slider("AA", "Anti-aimbot angles", "Statement #1", 2, 30, 2, true, "", 1, {[0] = "Invalid"}),
         breaker_statement2 = ui.new_slider("AA", "Anti-aimbot angles", "Statement #2 (Δ)", -30, 30, 0, true, "Δ", 1, {[0] = "Invalid"}),
         disrupt_spin = ui.new_checkbox("AA", "Anti-aimbot angles", "Disrupt Spin", false),
-        def_hold_switch = ui.new_checkbox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Hold", false),
-        def_hold = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Hold Amount", 0, 50, 2, true, "ms"),
+        force_invalid = ui.new_checkbox("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Force Invalid", false),
+        force_invalid_slider = ui.new_slider("AA", "Anti-aimbot angles", "\aE8E8E8FF[\aBBC0F3FFDefensive\aE8E8E8FF] ~\aE8E8E8FF Force Invalid", 1, 6, 1),
 
 
         spacer3 = ui.new_label("AA", "Anti-aimbot angles", " \n "),
@@ -2091,10 +2092,11 @@ local function fix_antiaim_visibility()
         ui.set_visible(lua.def.label1, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
         ui.set_visible(lua.def.spacer3, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
         ui.set_visible(lua.def.yaw_type, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.def_hold_switch, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
-        ui.set_visible(lua.def.def_hold, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.force_invalid, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access)
+        ui.set_visible(lua.def.force_invalid_slider, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and has_access and ui.get(lua.def.force_invalid))
         ui.set_visible(lua.def.yaw, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
-        ui.set_visible(lua.def.radius, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Spin" and ui.get(lua.def.yaw_type) ~= "Static" and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
+        ui.set_visible(lua.def.leftyaw, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Spin" and ui.get(lua.def.yaw_type) ~= "Static" and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
+        ui.set_visible(lua.def.rightyaw, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Spin" and ui.get(lua.def.yaw_type) ~= "Static" and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
         ui.set_visible(lua.def.delay, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) ~= "Jitter" and ui.get(lua.def.yaw_type) ~= "Static" and ui.get(lua.def.yaw_type) ~= "Breaker" and has_access)
         ui.set_visible(lua.def.spin_radius, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Spin" and has_access)
         ui.set_visible(lua.def.spin_direction, sync_defensive_desync and getcombo(lua.def.override_def, "Override Yaw") and ui.get(lua.home.manager) == "\aFFDF62FF⚠ \aE8E8E8FFDefensive AA" and ui.get(lua.def.toggle) and ui.get(lua.def.yaw_type) == "Spin" and has_access)
@@ -3081,7 +3083,9 @@ local setup_defensive = {
     side = 0,
     cycle = 0,
     hold = 0,
-    hold_ready = false
+    hold_ready = false,
+    ready = false,
+    side = false
 
 }
 
@@ -3107,12 +3111,33 @@ local spinner = {
 
 local function defensive_logic(arg)
     local lp = entity.get_local_player()
-    if not lp or not entity.is_alive(lp) then
-        return
-    end
+    if not lp or not entity.is_alive(lp) then return end
     local weapon = entity.get_player_weapon(lp)
         
     if not ui.get(lua.def.toggle) or not ui.get(lua.def.def_type) == "Desync" then return end
+
+    -- Optimized tick validation
+    local function get_defensive_tick_state()
+        local tickbase = entity.get_prop(lp, "m_nTickBase")
+        local shift_ticks = math.abs(tickbase - def_vars.defensive.check)
+        return shift_ticks > 1 and shift_ticks < 14 and shift_ticks % 3 ~= 1
+    end
+
+    -- Enhanced defensive angle generation
+    local function generate_defensive_angle()
+        if def_vars.defensive.defensive > 1 then
+            local tick_offset = def_vars.defensive.defensive * ui.get(lua.def.breaker_statement2)
+            return (tick_offset * (math.random(0, 1) == 1 and 1 or -1))
+        end
+        return 0
+    end
+
+    local function is_tick_invalid()
+        local tickbase = entity.get_prop(lp, "m_nTickBase")
+        local shift_ticks = math.abs(tickbase - def_vars.defensive.check)
+        return shift_ticks > 1 and shift_ticks < 14 and shift_ticks % ui.get(lua.def.force_invalid_slider) ~= 1
+    end
+
 
 
     local lag_timer = entity.get_prop(lp, "m_nTickbase") % ui.get(lua.def.pause_time) == 0
@@ -3133,12 +3158,10 @@ local function defensive_logic(arg)
         lp_choke = 0
     end
 
-
     if setup_defensive.cycle == ui.get(lua.def.delay) then
         delayed = false
         setup_defensive.side = setup_defensive.side == 1 and 0 or 1
     end
-
 
     if ui.get(lua.def.spin_radius) > 340 then
         def_vars.spin_fix = ui.get(lua.def.spin_radius) - 23
@@ -3151,8 +3174,6 @@ local function defensive_logic(arg)
     if def_vars.set_loop > def_vars.spin_fix then
         def_vars.set_loop = 0
     end
-
-
 
     local yaw_val = (def_vars.set_loop - def_vars.spin_fix / 2)
 
@@ -3169,31 +3190,18 @@ local function defensive_logic(arg)
         end
     end
 
-
-
     local current_time = globals.realtime()
     local time_delta = current_time - spinner.last_update
     
-    -- Update angle based on speed
     spinner.current_angle = spinner.current_angle + ((ui.get(lua.def.delay) * 200) * time_delta)
-    
-    -- Keep angle within 0-360 range
     spinner.current_angle = spinner.current_angle % ui.get(lua.def.spin_radius)
-    
-    -- Convert to game-friendly -180/180 range and set yaw
     def_vars.base = func.normalize_angle(spinner.current_angle)
-
-    
     spinner.last_update = current_time
 
-
-
     for i = 1, #def_states_table do
-        
         if get_player_state() == def_states_table[i] and getcombo(lua.def.def_conds, def_states_table[i]) == true or ui.get(menu.slowmotion[2]) then
             def_vars.is_true = true
         end
-
 
         if ui.get(menu.doubletap[2]) then 
             if ui.get(lua.def.freesync_updt) then
@@ -3206,22 +3214,19 @@ local function defensive_logic(arg)
             end
             if def_vars.is_true == true and not ui.get(menu.fakeduck) then 
                 if getcombo(lua.def.override_def, "Override Yaw") then 
-
-
-
                     arg.allow_send_packet = true
-                     
                     ui.set(menu.doubletap[3], "Defensive")
 
                     if globals.tickcount() % 3 == 1 then
                         ui.set(menu.doubletap[3], "Offensive")
                     end
-                    arg.force_defensive = false
+
+                    arg.force_defensive = get_defensive_tick_state()
+                    
                     if ui.get(lua.def.pause_time) > 0 then
                         arg.force_defensive = false
                     end
                     if air and ui.get(lua.def.pause_time) > 0 then
-                        
                         ui.set(menu.fakeduck, lag_timer and "Always on" or "On hotkey")
                         ui.set(menu.ragebot_toggle, false)
                     end
@@ -3240,15 +3245,16 @@ local function defensive_logic(arg)
                     ui.set(menu.body_yaw[1], "Off")
                     ui.set(menu.body_yaw[2], 1)
                     ui.set(menu.roll, 0)
-
-                    if ui.get(lua.def.def_hold_switch) then
-                        if arg.command_number % ui.get(lua.def.def_hold) >= ui.get(lua.def.def_hold) / 2 then
+                    if ui.get(lua.def.force_invalid) then
+                        if is_tick_invalid() then
                             setup_defensive.hold_ready = true
+                        else
+                            setup_defensive.hold_ready = false
                         end
                     else
                         setup_defensive.hold_ready = true
                     end
-
+                    setup_defensive.ready = true
                     if setup_defensive.hold_ready == true then
                         arg.force_defensive = true
                         setup_defensive.hold_ready = false
@@ -3256,83 +3262,31 @@ local function defensive_logic(arg)
                             ui.set(menu.yaw[2], ui.get(lua.def.yaw))
                             ui.set(menu.yaw_jitter[2], 0)
                         elseif ui.get(lua.def.yaw_type) == "Jitter" then
-                            ui.set(menu.yaw[2], ui.get(lua.def.yaw))
-                            ui.set(menu.yaw_jitter[1], "Center")
-                            ui.set(menu.yaw_jitter[2], ui.get(lua.def.radius) * 2.5)
-                            ui.set(menu.body_yaw[1], "Jitter")
-                            ui.set(menu.body_yaw[2], 1)
-
-                        elseif ui.get(lua.def.yaw_type) == "Breaker" then
-                            -- Pre-defined base angles
-                            local left_angle = -125
-                            local right_angle = 135
-                        
-                            -- Use statement1 for delay timing
-                            local statement1 = ui.get(lua.def.breaker_statement1)
-                            local switch_timer = statement1 * 2
-                            local tick_count = globals.tickcount()
-                        
-                            -- Use statement2 for yaw radius adjustment
-                            local statement2 = ui.get(lua.def.breaker_statement2)
-                            -- Adjust angles based on statement2
-                            if statement2 > 0 then
-                                right_angle = right_angle + statement2
-                                left_angle = left_angle - statement2
-                            else
-                                right_angle = right_angle - math.abs(statement2)
-                                left_angle = left_angle + math.abs(statement2)
-                            end
-                        
-                            -- Determine if it's time to switch
-                            if tick_count % switch_timer == 0 then
-                                if setup_defensive.side_counter >= 2 then
-                                    setup_defensive.side_counter = 0
-                                else
-                                    setup_defensive.side_counter = setup_defensive.side_counter + 1
-                                end
-                            end
                             
-                            -- Smoother random variation based on tick
-                            local random_variation = math.sin(tick_count * 0.1) * 5
-                        
-                            if ui.get(lua.def.breaker_sequence) == "Unpure" then
-                                -- Smooth randomization for unpure mode
-                                local unpure_random = math.sin(tick_count * 0.2) * 15
-                                left_angle = left_angle + unpure_random
-                                right_angle = right_angle - unpure_random
-                            end
-                        
-                            -- Calculate target yaw
-                            local target_yaw
-                            if setup_defensive.side_counter == 0 then
-                                target_yaw = left_angle + random_variation
-                            else
-                                target_yaw = right_angle + random_variation
-                            end
-                        
-                            -- Smooth transition to target
-                            if not setup_defensive.last_yaw then
-                                setup_defensive.last_yaw = target_yaw
-                            end
-                        
-                            -- Smoothing factor based on statement1
-                            local smooth_factor = 0.1 + (statement1 * 0.01)
-                            setup_defensive.yaw = setup_defensive.last_yaw + (target_yaw - setup_defensive.last_yaw) * smooth_factor
-                            setup_defensive.last_yaw = setup_defensive.yaw
-                        
-                            -- Apply yaw if in defensive mode
+
+
+                                    if math.random(0,1) == 1 then
+                                        ui.set(menu.body_yaw[2], 1)
+                                        ui.set(menu.yaw[2], ui.get(lua.def.leftyaw))
+
+                                    else
+                                        ui.set(menu.body_yaw[2], -1)
+                                        ui.set(menu.yaw[2], ui.get(lua.def.rightyaw))
+                                    end
+                                
+                            
+                            ui.set(menu.yaw_jitter[1], "Center")
+                            ui.set(menu.yaw_jitter[2], 0)
+                            ui.set(menu.body_yaw[1], "Static")
+                        elseif ui.get(lua.def.yaw_type) == "Breaker" then
                             if isDefensive then
                                 local final_yaw = func.normalize(setup_defensive.yaw)
-                                ui.set(menu.yaw[2], final_yaw)
+                                ui.set(menu.yaw[2], clamp(generate_defensive_angle(), -180, 180))
                             end
-                        
-                            -- Set additional AA parameters
                             ui.set(menu.body_yaw[1], "Static")
                             ui.set(menu.yaw_jitter[2], 0)
                         elseif ui.get(lua.def.yaw_type) == "Spin" then
                             if isDefensive then
-
-                                
                                 ui.set(menu.yaw[2], func.normalize_angle(def_vars.base))
                                 ui.set(menu.yaw_jitter[2], 0)
                                 ui.set(menu.body_yaw[1], "Static")
@@ -3341,11 +3295,6 @@ local function defensive_logic(arg)
                         end
                     end
                 end
-
-
-
-
-
 
                 for i = 1, #pitch_str do
                     if getcombo(lua.def.override_def, "Override Pitch") then 
@@ -3370,8 +3319,6 @@ local function defensive_logic(arg)
                             def_vars.pitch_variation = 0
                         end
 
-                        
-
                         if pitchnod_func > -88 then 
                             pitchnod_func = pitchnod_func - ui.get(lua.def.nodspeed) / 100
                         end
@@ -3379,6 +3326,7 @@ local function defensive_logic(arg)
                         if pitchnod_func < -80 then
                             pitchnod_func = 89
                         end
+
                         if ui.get(lua.def.flick_type) == "evade" then
                             if isDefensive then
                                 ui.set(menu.pitch[2], pitch_str[ui.get(lua.def.trigger_pitch)])
@@ -3387,10 +3335,8 @@ local function defensive_logic(arg)
                         else
                             if isDefensive then
                                 if exp_switch == false and ui.get(lua.def.flick_rate) ~= 0 then
-           
                                     ui.set(menu.pitch[2], pitch_str[ui.get(lua.def.trigger_pitch)])
                                     ui.set(menu.pitch[1], "Custom")
-        
                                 end
                             end
                         end
@@ -3411,7 +3357,6 @@ local function defensive_logic(arg)
                             end
                         end
                         if isDefensive and isptr == true then
-
                             ui.set(menu.pitch[2], pitchnod_func)
                         end
                     end
