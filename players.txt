@@ -249,7 +249,6 @@ local clear_cache_button = ui.new_button("RAGE", "Other", "Clear Resolver Cache"
     client.log("[FrostReso] Cleared behavior profiles and experience cache.")
 end)
 
-frost_divider()
 ui.new_label("RAGE", "Other", "\aC8C8C8FFFrost Resolver V2 — Neural Anti‑Aim Engine")
 
 
