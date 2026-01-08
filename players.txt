@@ -144,25 +144,15 @@ local LAGCOMP_HISTORY_DECAY     = 0.9    -- smoothing for confidence
 -- UI Elements / Frost Resolver UI
 ----------------------------------------------------------------
 
--- Frost-styled helpers
-local function frost_label(text)
-    return ui.new_label("RAGE", "Other", "\aBBC0F3FF" .. text .. "\aFFFFFFFF")
-end
-
-local function frost_divider()
-    return ui.new_label("RAGE", "Other", "\a8AB4FFFF──────────────────────────────────────────────")
-end
-
 -- Header
-frost_label("❄  Frost Resolver V2  ❄")
+ui.new_label("RAGE", "Other", "\aBBC0F3FF" .. "❄  Frost Resolver V2  ❄" .. "\aFFFFFFFF")
 ui.new_label("RAGE", "Other", "\aC8C8C8FFAdaptive Neural Anti‑Aim Resolver")
-frost_divider()
+
 
 ----------------------------------------------------------------
 -- Resolver Settings
 ----------------------------------------------------------------
 
-frost_label("Resolver Settings")
 
 resolver_master = ui.new_checkbox("RAGE", "Other", "Enable Frost Resolver")
 resolver_debug  = ui.new_checkbox("RAGE", "Other", "Resolver Debug Overlay")
@@ -181,13 +171,13 @@ local resolver_mode = ui.new_combobox("RAGE", "Other", "Resolver Mode", {
     "Legacy"
 })
 
-frost_divider()
+
 
 ----------------------------------------------------------------
 -- Neural Network
 ----------------------------------------------------------------
 
-frost_label("Neural Network")
+
 
 local nn_enable = ui.new_checkbox("RAGE", "Other", "Enable Neural Network")
 
@@ -195,26 +185,24 @@ local nn_conf_bias = ui.new_slider("RAGE", "Other", "NN Confidence Bias", 0, 100
 local nn_blend_strength = ui.new_slider("RAGE", "Other", "NN Blend Strength", 0, 100, 60)
 local nn_train_during_match = ui.new_checkbox("RAGE", "Other", "Train During Match")
 
-frost_divider()
 
 ----------------------------------------------------------------
 -- Pattern Detection
 ----------------------------------------------------------------
 
-frost_label("Pattern Detection")
 
 local static_sensitivity = ui.new_slider("RAGE", "Other", "Static Sensitivity", 1, 50, 32)
 local jitter_sensitivity = ui.new_slider("RAGE", "Other", "Jitter Sensitivity", 1, 50, 5)
 local flick_sensitivity  = ui.new_slider("RAGE", "Other", "Flick Sensitivity", 1, 100, 80)
 local behavior_profiles_enable = ui.new_checkbox("RAGE", "Other", "Enable Behavior Profiles")
 
-frost_divider()
+
 
 ----------------------------------------------------------------
 -- Debug & Dashboard
 ----------------------------------------------------------------
 
-frost_label("Debug & Dashboard")
+
 
 debug_options = ui.new_multiselect(
     "RAGE", "Other",
@@ -233,26 +221,23 @@ debug_options = ui.new_multiselect(
 
 local dashboard_toggle = ui.new_checkbox("RAGE", "Other", "Show Frost Dashboard")
 
-frost_divider()
+
 
 ----------------------------------------------------------------
 -- Advanced Tweaks
 ----------------------------------------------------------------
 
-frost_label("Advanced Tweaks")
+
 
 local tweak_desync_shape   = ui.new_slider("RAGE", "Other", "Desync Shaping Strength", 0, 100, 50)
 local tweak_lagcomp_trust  = ui.new_slider("RAGE", "Other", "Lagcomp Trust Factor", 0, 100, 45)
 local tweak_pattern_weight = ui.new_slider("RAGE", "Other", "Pattern Override Weight", 0, 100, 70)
 local tweak_nn_weight      = ui.new_slider("RAGE", "Other", "NN Override Weight", 0, 100, 60)
 
-frost_divider()
 
 ----------------------------------------------------------------
 -- Data Management
 ----------------------------------------------------------------
-
-frost_label("Data Management")
 
 local clear_cache_button = ui.new_button("RAGE", "Other", "Clear Resolver Cache", function()
     if writefile then
