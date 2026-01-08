@@ -286,7 +286,7 @@ local lagcomp_state = setmetatable({}, { __mode = "k" })
 
 -- Tuning constants for lagcomp heuristic
 local LAGCOMP_MAX_CHOKE_TICKS   = 14     -- typical max choke
-local LAGCOMP_MIN_REAL_DELTA    = 0.015  -- min simtime delta to consider "real update"
+local LAGCOMP_MIN_REAL_DELTA    = 0.010  -- min simtime delta to consider "real update"
 local LAGCOMP_BIG_DELTA         = 0.05   -- big jump = likely real shift / break
 local LAGCOMP_HISTORY_DECAY     = 0.9    -- smoothing for confidence
 
@@ -383,7 +383,7 @@ local function update_lagcomp_predictor(ent)
 
         st.real_update_conf = st.real_update_conf * LAGCOMP_HISTORY_DECAY + instant_conf * (1 - LAGCOMP_HISTORY_DECAY)
 
-        if st.real_update_conf > 0.6 then
+        if st.real_update_conf > 0.45 then
             st.status = "real"
         else
             st.status = "updating"
@@ -639,7 +639,7 @@ local function extract_features(ent)
         layer_lean.weight,
         layer_lean.playback,
         layer_adj.weight,
-        (desync + 29) / 116
+        (desync + 29) / 58
     }
 
     return features, desync, yaw, pitch
@@ -687,16 +687,17 @@ local function detect_patterns(ent, features, desync, yaw)
     ------------------------------------------------------------
     -- Static AA detection: require many small deltas in a row
     ------------------------------------------------------------
-    if abs(yaw_delta) < 2 and abs(desync_delta) < 2 then
+    if abs(yaw_delta) < 1 and abs(desync_delta) < 1 then
         pat.static_ticks = (pat.static_ticks or 0) + 1
     else
-        pat.static_ticks = max(0, (pat.static_ticks or 0) - 1)
+        pat.static_ticks = max(0, (pat.static_ticks or 0) - 2)
     end
 
-    if pat.static_ticks >= 16 then
+    if pat.static_ticks >= 32 then
         pat.pattern = "static"
-        pat.confidence = clamp(pat.confidence + 0.04, 0, 1)
+        pat.confidence = clamp(pat.confidence + 0.03, 0, 1)
     end
+
 
     ------------------------------------------------------------
     -- Rapid manipulation (fake flicks)
@@ -734,7 +735,7 @@ local function get_behavior_signature(ent, pat)
 
     -- Quantize key aspects into a coarse "style" bucket
     local q_yaw_delta  = quantize(summary.avg_yaw_delta, 10, -180, 180)
-    local q_desync     = quantize(summary.avg_desync, 5, 0, 60)
+    local q_desync     = quantize(summary.avg_desync, 5, 0, 29)
     local q_jitter     = quantize(summary.jitter_density, 0.1, 0, 1)
     local pattern_name = (pat and pat.pattern) or summary.last_pattern or "none"
 
@@ -791,7 +792,7 @@ local function get_behavior_profile_features(ent, pat)
     -- 1) avg_desync (0..1)
     -- 2) yaw_delta bias (-1..1)
     -- 3) jitter density (0..1)
-    local desync_hint = clamp(prof.avg_desync / 60, 0, 1)
+    local desync_hint = clamp(prof.avg_desync / 29, 0, 1)
     local yaw_hint    = clamp(prof.avg_yaw_delta / 180, -1, 1)
     local jitter_hint = clamp(prof.jitter_density, 0, 1)
 
@@ -892,10 +893,11 @@ local function add_experience(ent, features, actual_desync, hit_success, hitgrou
 
     -- Convert actual desync to normalized targets
     local target = {
-        (actual_desync + 180) / 360,   -- yaw target (placeholder)
-        (actual_desync + 29) / 116,    -- desync target
-        (head_bias_target + 1) / 2     -- map -1..1 -> 0..1
+        0.5,                              -- yaw target (placeholder / not trained)
+        (actual_desync + 29) / 58,        -- correct desync target
+        (head_bias_target + 1) / 2
     }
+
 
     local reward = hit_success and 1 or -1
 
@@ -1168,7 +1170,7 @@ local function choose_strategy(ent, nn_pred, nn_conf, pattern, desync)
         if pattern.pattern == "flick" then
             return {
                 yaw    = nn_pred and nn_pred.yaw or 0,
-                desync = clamp(desync * 1.5, -29, 29)
+                desync = clamp(desync * 1.5, -29, 29),
                 source = "pattern_flick"
             }
         end
