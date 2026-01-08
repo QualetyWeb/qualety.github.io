@@ -654,6 +654,7 @@ local function detect_patterns(ent, features, desync, yaw)
     if not pat then
         pat = {
             jitter_count = 0,
+            static_ticks = 0,
             last_yaw = yaw,
             last_desync = desync,
             last_update = globals.curtime(),
@@ -663,14 +664,14 @@ local function detect_patterns(ent, features, desync, yaw)
         aa_patterns[ent] = pat
     end
 
-    local yaw_delta = normalize_yaw(yaw - pat.last_yaw)
+    local yaw_delta    = normalize_yaw(yaw - pat.last_yaw)
     local desync_delta = desync - pat.last_desync
 
-    pat.last_yaw = yaw
+    pat.last_yaw    = yaw
     pat.last_desync = desync
 
     ------------------------------------------------------------
-    -- Jitter detection
+    -- Jitter detection: require more consecutive large swings
     ------------------------------------------------------------
     if abs(yaw_delta) > 35 then
         pat.jitter_count = pat.jitter_count + 1
@@ -678,19 +679,23 @@ local function detect_patterns(ent, features, desync, yaw)
         pat.jitter_count = max(0, pat.jitter_count - 1)
     end
 
-    if pat.jitter_count >= 3 then
+    if pat.jitter_count >= 5 then
         pat.pattern = "jitter"
-        pat.confidence = clamp(pat.confidence + 0.1, 0, 1)
-        return pat
+        pat.confidence = clamp(pat.confidence + 0.08, 0, 1)
     end
 
     ------------------------------------------------------------
-    -- Static AA detection
+    -- Static AA detection: require many small deltas in a row
     ------------------------------------------------------------
     if abs(yaw_delta) < 2 and abs(desync_delta) < 2 then
+        pat.static_ticks = (pat.static_ticks or 0) + 1
+    else
+        pat.static_ticks = max(0, (pat.static_ticks or 0) - 1)
+    end
+
+    if pat.static_ticks >= 16 then
         pat.pattern = "static"
-        pat.confidence = clamp(pat.confidence + 0.05, 0, 1)
-        return pat
+        pat.confidence = clamp(pat.confidence + 0.04, 0, 1)
     end
 
     ------------------------------------------------------------
@@ -698,20 +703,22 @@ local function detect_patterns(ent, features, desync, yaw)
     ------------------------------------------------------------
     if abs(yaw_delta) > 80 then
         pat.pattern = "flick"
-        pat.confidence = clamp(pat.confidence + 0.15, 0, 1)
-        return pat
+        pat.confidence = clamp(pat.confidence + 0.10, 0, 1)
     end
 
     ------------------------------------------------------------
-    -- Default fallback
+    -- Default decay when not obviously matching anything
     ------------------------------------------------------------
-    pat.pattern = "none"
-    pat.confidence = clamp(pat.confidence - 0.05, 0, 1)
+    if pat.pattern == "none" then
+        pat.confidence = clamp(pat.confidence - 0.03, 0, 1)
+    end
 
+    -- Always update short-term stats (was previously only on "none" path)
     update_short_term_stats(ent, yaw_delta, desync, pat)
 
     return pat
 end
+
 
 ----------------------------------------------------------------
 -- Behavior Signature n Profiles
@@ -838,8 +845,15 @@ local function nn_predict(ent, features)
         head_bias = clamp((pred[3] * 2) - 1, -1, 1)
     end
 
-    -- Confidence: based on output layer magnitude
-    local confidence = clamp(abs(pred[1] - 0.5) * 2, 0, 1)
+    -- Softer, multi-output confidence:
+    -- - yaw away from center
+    -- - desync away from center
+    -- - small floor so it's never 0 while learning
+    local yaw_margin    = clamp(abs(pred[1] - 0.5) * 2, 0, 1)
+    local desync_margin = clamp(abs(pred[2] - 0.5) * 2, 0, 1)
+
+    local confidence = 0.2 + yaw_margin * 0.5 + desync_margin * 0.3
+    confidence = clamp(confidence, 0, 1)
 
     -- Cache
     prediction_cache[ent] = {
@@ -1090,78 +1104,96 @@ local function choose_strategy(ent, nn_pred, nn_conf, pattern, desync)
     -- Behavior-based hints
     local desync_hint, yaw_hint, jitter_hint = get_behavior_profile_features(ent, pattern)
 
-    -- If NN is confident, trust it (with style + head bias)
-    local nn_high = nn_conf and nn_conf > 0.75
-    local lc_good = lc and lc.real_conf and lc.real_conf > 0.6
+    nn_conf = nn_conf or 0
+    local lc_conf = lc and lc.real_conf or 0
 
-    if nn_pred and (nn_high or (nn_conf and nn_conf > 0.55 and lc_good)) then
+    -- If NN is reasonably confident AND lagcomp is not terrible, let it lead.
+    local nn_strong = nn_conf > 0.7
+    local nn_ok     = nn_conf > 0.45
+    local lc_good   = lc_conf > 0.4
 
-        local desync = nn_pred.desync
+    if nn_pred and (nn_strong or (nn_ok and lc_good)) then
+        local desync_res = nn_pred.desync
 
         -- Style-based prior on desync magnitude
         if desync_hint ~= 0 then
-            local sign = desync >= 0 and 1 or -1
+            local sign = desync_res >= 0 and 1 or -1
             local hinted = desync_hint * 29 * sign
-            desync = blend(desync, hinted, 0.2)
+            desync_res = blend(desync_res, hinted, 0.2)
         end
 
-        -- Head-bias: very slight nudge in direction where headshots were rewarded
+        -- Head-bias: slight nudge
         if nn_pred.head_bias then
-            local head_nudge = nn_pred.head_bias * 6 -- max 6* extra
-            desync = clamp(desync + head_nudge, -60, 60)
+            local head_nudge = nn_pred.head_bias * 6
+            desync_res = clamp(desync_res + head_nudge, -60, 60)
         end
 
         return {
-            yaw   = nn_pred.yaw,
-            desync = desync,
-            source = "nn_high_conf"
+            yaw    = nn_pred.yaw,
+            desync = desync_res,
+            source = "nn_lead"
         }
     end
 
-
-    -- Pattern-based overrides
-    if pattern and pattern.confidence > 0.6 then
+    ----------------------------------------------------------------
+    -- Pattern-based overrides: only when NN is weak and lagcomp is OK
+    ----------------------------------------------------------------
+    local can_use_pattern = (not nn_pred) or nn_conf < 0.35
+    if pattern and pattern.confidence > 0.7 and can_use_pattern and lc_conf > 0.3 then
         if pattern.pattern == "jitter" then
             return {
-                yaw = nn_pred and nn_pred.yaw or 0,
+                yaw    = nn_pred and nn_pred.yaw or 0,
                 desync = (desync > 0 and -29 or 29),
                 source = "pattern_jitter"
             }
         end
 
         if pattern.pattern == "static" then
+            -- static: trust current desync, maybe lightly bias magnitude
+            local ds = desync
+            if desync_hint ~= 0 then
+                local sign = ds >= 0 and 1 or -1
+                local hinted = desync_hint * 29 * sign
+                ds = blend(ds, hinted, 0.3)
+            end
+
             return {
-                yaw = nn_pred and nn_pred.yaw or 0,
-                desync = desync,
+                yaw    = nn_pred and nn_pred.yaw or 0,
+                desync = ds,
                 source = "pattern_static"
             }
         end
 
         if pattern.pattern == "flick" then
             return {
-                yaw = nn_pred and nn_pred.yaw or 0,
+                yaw    = nn_pred and nn_pred.yaw or 0,
                 desync = (desync > 0 and 40 or -40),
                 source = "pattern_flick"
             }
         end
     end
 
-    -- Medium confidence NN - blend with real desync
-    if nn_pred and nn_conf and nn_conf > 0.35 then
+    ----------------------------------------------------------------
+    -- Medium confidence NN - blend with raw desync
+    ----------------------------------------------------------------
+    if nn_pred and nn_conf > 0.25 then
         return {
-            yaw = nn_pred.yaw,
+            yaw    = nn_pred.yaw,
             desync = blend(desync, nn_pred.desync, nn_conf),
             source = "nn_blend"
         }
     end
 
+    ----------------------------------------------------------------
     -- Low confidence fallback
+    ----------------------------------------------------------------
     return {
-        yaw = 0,
+        yaw    = 0,
         desync = (desync > 0 and 29 or -29),
         source = "fallback"
     }
 end
+
 
 ----------------------------------------------------------------
 -- Final Resolver Application
