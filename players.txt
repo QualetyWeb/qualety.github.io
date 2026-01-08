@@ -159,6 +159,9 @@ ui.new_label("RAGE", "Other", "\aC8C8C8FFAdaptive Neural Anti‑Aim Resolver")
 frost_divider()
 
 -- Collapsible section system
+-- Collapsible section system (single paint_ui)
+local sections = {}
+
 local function new_section(name)
     local toggle = ui.new_checkbox("RAGE", "Other", name)
     local elements = {}
@@ -168,15 +171,20 @@ local function new_section(name)
         ui.set_visible(elem, false)
     end
 
-    client.set_event_callback("paint_ui", function()
-        local open = ui.get(toggle)
-        for _, elem in ipairs(elements) do
-            ui.set_visible(elem, open)
-        end
-    end)
+    table.insert(sections, { toggle = toggle, elements = elements })
 
     return add
 end
+
+client.set_event_callback("paint_ui", function()
+    for _, sec in ipairs(sections) do
+        local open = ui.get(sec.toggle)
+        for _, elem in ipairs(sec.elements) do
+            ui.set_visible(elem, open)
+        end
+    end
+end)
+
 
 -- Define section adders
 local add_resolver = new_section("Resolver Settings")
