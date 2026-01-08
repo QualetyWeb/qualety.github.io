@@ -90,23 +90,165 @@ ffi.cdef[[
 ]]
 
 ----------------------------------------------------------------
--- UI Elements
+-- Global Resolver State Tables
 ----------------------------------------------------------------
 
-local lbl_header = ui.new_label(
-    "RAGE", "Other",
-    "----------------------\aBBC0F3FF Frost Resolver V2 \aE8E8E8FF----------------------"
-)
+-- Per-entity resolver state (movement history, last resolved angles, etc.)
+local resolver_states      = setmetatable({}, { __mode = "k" })
 
-local resolver_master = ui.new_checkbox("RAGE", "Other", "Frost Resolver V2", true)
-local resolver_debug  = ui.new_checkbox("RAGE", "Other", "Resolver Debug")
-local hitlog_level = ui.new_combobox(
+-- Per-entity hit/miss info
+local hit_miss_data        = setmetatable({}, { __mode = "k" })
+
+-- Per-entity anti-aim pattern state
+local aa_patterns          = setmetatable({}, { __mode = "k" })
+
+-- NN-related per-entity prediction cache (short term)
+local prediction_cache     = setmetatable({}, { __mode = "k" })
+
+-- Last cleanup time
+local last_cleanup_time    = 0
+
+-- Prediction cache duration
+local PREDICTION_CACHE_SEC = 0.03
+
+-- Long-term behavior profiles
+local behavior_profiles = {}
+
+-- File names for persistence
+local BEHAVIOR_PROFILE_FILE = "resolver_behavior_profiles.json"
+local EXPERIENCE_LOG_FILE   = "resolver_experiences.json"
+
+-- Local in-memory experience cache for pretraining
+local experience_log = {}
+
+-- Limit how many experiences we keep on disk (to avoid bloat)
+local MAX_EXPERIENCES_ON_DISK = 8000
+
+-- Per-entity lag compensation / choke state
+local lagcomp_state = setmetatable({}, { __mode = "k" })
+
+-- Live dashboard state
+local last_nn_conf   = 0
+local last_pattern   = "none"
+local last_lag_status = "unknown"
+local last_desync    = 0
+local last_source    = "none"
+
+-- Tuning constants for lagcomp heuristic
+local LAGCOMP_MAX_CHOKE_TICKS   = 14     -- typical max choke
+local LAGCOMP_MIN_REAL_DELTA    = 0.010  -- min simtime delta to consider "real update"
+local LAGCOMP_BIG_DELTA         = 0.05   -- big jump = likely real shift / break
+local LAGCOMP_HISTORY_DECAY     = 0.9    -- smoothing for confidence
+
+----------------------------------------------------------------
+-- UI Elements / Frost Resolver UI Framework
+----------------------------------------------------------------
+
+-- Frost-styled helpers
+local function frost_label(text)
+    return ui.new_label("RAGE", "Other", "\aBBC0F3FF" .. text .. "\aFFFFFFFF")
+end
+
+local function frost_divider()
+    return ui.new_label("RAGE", "Other", "\a8AB4FFFF──────────────────────────────────────────────")
+end
+
+-- Header
+frost_label("❄  Frost Resolver V2  ❄")
+ui.new_label("RAGE", "Other", "\aC8C8C8FFAdaptive Neural Anti‑Aim Resolver")
+frost_divider()
+
+-- Collapsible section system
+local function new_section(name)
+    local toggle = ui.new_checkbox("RAGE", "Other", name)
+    local elements = {}
+
+    local function add(elem)
+        table.insert(elements, elem)
+        ui.set_visible(elem, false)
+    end
+
+    client.set_event_callback("paint_ui", function()
+        local open = ui.get(toggle)
+        for _, elem in ipairs(elements) do
+            ui.set_visible(elem, open)
+        end
+    end)
+
+    return add
+end
+
+-- Define section adders
+local add_resolver = new_section("Resolver Settings")
+local add_nn       = new_section("Neural Network")
+local add_patterns = new_section("Pattern Detection")
+local add_debug    = new_section("Debug & Dashboard")
+local add_tweaks   = new_section("Advanced Tweaks")
+local add_cache    = new_section("Data Management")
+
+----------------------------------------------------------------
+-- Resolver Settings Section (reusing resolver_master)
+----------------------------------------------------------------
+
+resolver_master = ui.new_checkbox("RAGE", "Other", "Enable Frost Resolver")
+add_resolver(resolver_master)
+
+resolver_debug  = ui.new_checkbox("RAGE", "Other", "Resolver Debug Overlay")
+add_resolver(resolver_debug)
+
+hitlog_level = ui.new_combobox(
     "RAGE", "Other",
-    "Resolver Hit/Miss Logs",
+    "Hit/Miss Log Level",
     { "-", "Basic", "Detailed" }
 )
+add_resolver(hitlog_level)
 
-local debug_options = ui.new_multiselect(
+local resolver_mode = ui.new_combobox("RAGE", "Other", "Resolver Mode", {
+    "Balanced",
+    "Aggressive",
+    "Safe",
+    "Experimental NN",
+    "Legacy"
+})
+add_resolver(resolver_mode)
+
+----------------------------------------------------------------
+-- Neural Network Section
+----------------------------------------------------------------
+
+local nn_enable = ui.new_checkbox("RAGE", "Other", "Enable Neural Network")
+add_nn(nn_enable)
+
+local nn_conf_bias = ui.new_slider("RAGE", "Other", "NN Confidence Bias", 0, 100, 50)
+add_nn(nn_conf_bias)
+
+local nn_blend_strength = ui.new_slider("RAGE", "Other", "NN Blend Strength", 0, 100, 60)
+add_nn(nn_blend_strength)
+
+local nn_train_during_match = ui.new_checkbox("RAGE", "Other", "Train During Match")
+add_nn(nn_train_during_match)
+
+----------------------------------------------------------------
+-- Pattern Detection Section
+----------------------------------------------------------------
+
+local static_sensitivity = ui.new_slider("RAGE", "Other", "Static Sensitivity", 1, 50, 32)
+add_patterns(static_sensitivity)
+
+local jitter_sensitivity = ui.new_slider("RAGE", "Other", "Jitter Sensitivity", 1, 50, 5)
+add_patterns(jitter_sensitivity)
+
+local flick_sensitivity = ui.new_slider("RAGE", "Other", "Flick Sensitivity", 1, 100, 80)
+add_patterns(flick_sensitivity)
+
+local behavior_profiles_enable = ui.new_checkbox("RAGE", "Other", "Enable Behavior Profiles")
+add_patterns(behavior_profiles_enable)
+
+----------------------------------------------------------------
+-- Debug & Dashboard Section (reusing debug_options)
+----------------------------------------------------------------
+
+debug_options = ui.new_multiselect(
     "RAGE", "Other",
     "Resolver Debug Info",
     {
@@ -120,11 +262,45 @@ local debug_options = ui.new_multiselect(
         "Anti-Aim Pattern"
     }
 )
+add_debug(debug_options)
 
-local lbl_footer = ui.new_label(
-    "RAGE", "Other",
-    "--------------------------------------------------------------"
-)
+local dashboard_toggle = ui.new_checkbox("RAGE", "Other", "Show Frost Dashboard")
+add_debug(dashboard_toggle)
+
+----------------------------------------------------------------
+-- Advanced Tweaks Section
+----------------------------------------------------------------
+
+local tweak_desync_shape = ui.new_slider("RAGE", "Other", "Desync Shaping Strength", 0, 100, 50)
+add_tweaks(tweak_desync_shape)
+
+local tweak_lagcomp_trust = ui.new_slider("RAGE", "Other", "Lagcomp Trust Factor", 0, 100, 45)
+add_tweaks(tweak_lagcomp_trust)
+
+local tweak_pattern_weight = ui.new_slider("RAGE", "Other", "Pattern Override Weight", 0, 100, 70)
+add_tweaks(tweak_pattern_weight)
+
+local tweak_nn_weight = ui.new_slider("RAGE", "Other", "NN Override Weight", 0, 100, 60)
+add_tweaks(tweak_nn_weight)
+
+----------------------------------------------------------------
+-- Data Management Section (Clear Cache Button)
+----------------------------------------------------------------
+
+local clear_cache_button = ui.new_button("RAGE", "Other", "Clear Resolver Cache", function()
+    if writefile then
+        writefile(BEHAVIOR_PROFILE_FILE, "{}")
+        writefile(EXPERIENCE_LOG_FILE, "[]")
+    end
+    behavior_profiles = {}
+    experience_log = {}
+    client.log("[FrostReso] Cleared behavior profiles and experience cache.")
+end)
+add_cache(clear_cache_button)
+
+frost_divider()
+ui.new_label("RAGE", "Other", "\aC8C8C8FFFrost Resolver V2 — Neural Anti‑Aim Engine")
+
 
 ----------------------------------------------------------------
 -- Constants & Enums
@@ -245,50 +421,6 @@ local function get_animlayer(ent, index)
     local layer = layers_base[index]
     return layer
 end
-
-----------------------------------------------------------------
--- Global Resolver State Tables
-----------------------------------------------------------------
-
--- Per-entity resolver state (movement history, last resolved angles, etc.)
-local resolver_states      = setmetatable({}, { __mode = "k" })
-
--- Per-entity hit/miss info
-local hit_miss_data        = setmetatable({}, { __mode = "k" })
-
--- Per-entity anti-aim pattern state
-local aa_patterns          = setmetatable({}, { __mode = "k" })
-
--- NN-related per-entity prediction cache (short term)
-local prediction_cache     = setmetatable({}, { __mode = "k" })
-
--- Last cleanup time
-local last_cleanup_time    = 0
-
--- Prediction cache duration
-local PREDICTION_CACHE_SEC = 0.03
-
--- Long-term behavior profiles
-local behavior_profiles = {}
-
--- File names for persistence
-local BEHAVIOR_PROFILE_FILE = "resolver_behavior_profiles.json"
-local EXPERIENCE_LOG_FILE   = "resolver_experiences.json"
-
--- Local in-memory experience cache for pretraining
-local experience_log = {}
-
--- Limit how many experiences we keep on disk (to avoid bloat)
-local MAX_EXPERIENCES_ON_DISK = 8000
-
--- Per-entity lag compensation / choke state
-local lagcomp_state = setmetatable({}, { __mode = "k" })
-
--- Tuning constants for lagcomp heuristic
-local LAGCOMP_MAX_CHOKE_TICKS   = 14     -- typical max choke
-local LAGCOMP_MIN_REAL_DELTA    = 0.010  -- min simtime delta to consider "real update"
-local LAGCOMP_BIG_DELTA         = 0.05   -- big jump = likely real shift / break
-local LAGCOMP_HISTORY_DECAY     = 0.9    -- smoothing for confidence
 
 ----------------------------------------------------------------
 -- Internal Helpers
@@ -924,6 +1056,10 @@ local TRAIN_INTERVAL = 0.15
 local last_train_time = 0
 
 local function train_nn()
+    if nn_train_during_match and not ui.get(nn_train_during_match) then
+        return
+    end
+
     local now = globals.curtime()
     if now - last_train_time < TRAIN_INTERVAL then
         return
@@ -937,6 +1073,7 @@ local function train_nn()
 
     enhanced_nn.save()
 end
+
 
 ----------------------------------------------------------------
 -- Hit/Miss Tracking
@@ -1098,38 +1235,119 @@ local function blend(a, b, t)
     return a * (1 - t) + b * t
 end
 
+local function shape_desync(desync)
+    local sign = desync >= 0 and 1 or -1
+    local mag  = abs(desync)
+
+    local strength = tweak_desync_shape and ui.get(tweak_desync_shape) or 50
+    strength = strength / 100
+
+    if strength <= 0.01 then
+        return desync
+    end
+
+    local base     = 18 / (mag + 10)
+    local aggressive = 10 / (mag + 5)
+    local factor   = base * (1 - strength) + aggressive * strength
+
+    local compressed = mag * factor
+    return sign * compressed
+end
+
+
 ----------------------------------------------------------------
 -- Strategy Selection
 ----------------------------------------------------------------
 
 local function choose_strategy(ent, nn_pred, nn_conf, pattern, desync)
     local lc = get_lagcomp_info(ent)
+
     -- Behavior-based hints
     local desync_hint, yaw_hint, jitter_hint = get_behavior_profile_features(ent, pattern)
 
     nn_conf = nn_conf or 0
     local lc_conf = lc and lc.real_conf or 0
 
-    -- If NN is reasonably confident AND lagcomp is not terrible, let it lead.
-    local nn_strong = nn_conf > 0.7
-    local nn_ok     = nn_conf > 0.45
-    local lc_good   = lc_conf > 0.4
+    ------------------------------------------------------------
+    -- Read UI tweaks and mode
+    ------------------------------------------------------------
+    local mode = resolver_mode and ui.get(resolver_mode) or "Balanced"
 
-    if nn_pred and (nn_strong or (nn_ok and lc_good)) then
+    local lag_trust = tweak_lagcomp_trust and ui.get(tweak_lagcomp_trust) or 45
+    lag_trust = lag_trust / 50  -- 0.0–2.0 scale
+
+    local pattern_weight = tweak_pattern_weight and ui.get(tweak_pattern_weight) or 70
+    pattern_weight = pattern_weight / 100 -- 0.0–1.0
+
+    local nn_weight = tweak_nn_weight and ui.get(tweak_nn_weight) or 60
+    nn_weight = nn_weight / 100 -- 0.0–1.0
+
+    local conf_bias = nn_conf_bias and ui.get(nn_conf_bias) or 50
+    conf_bias = (conf_bias - 50) / 100  -- -0.5..+0.5
+
+    local blend_strength = nn_blend_strength and ui.get(nn_blend_strength) or 60
+    blend_strength = blend_strength / 100 -- used in blend branch
+
+    local nn_on = (not nn_enable) or ui.get(nn_enable) -- if checkbox missing, assume on
+
+    -- Apply lagcomp trust
+    lc_conf = clamp(lc_conf * lag_trust, 0, 1)
+
+    -- Apply NN confidence bias
+    nn_conf = clamp(nn_conf + conf_bias, 0, 1)
+
+    ------------------------------------------------------------
+    -- Mode presets (threshold tuning)
+    ------------------------------------------------------------
+    local nn_strong = 0.7
+    local nn_ok     = 0.45
+    local pattern_min_conf = 0.7
+    local nn_blend_min = 0.25
+
+    if mode == "Aggressive" then
+        nn_strong = 0.55
+        nn_ok     = 0.30
+        pattern_min_conf = 0.6
+        nn_blend_min = 0.15
+    elseif mode == "Safe" then
+        nn_strong = 0.8
+        nn_ok     = 0.6
+        pattern_min_conf = 0.75
+        nn_blend_min = 0.35
+    elseif mode == "Experimental NN" then
+        nn_strong = 0.4
+        nn_ok     = 0.2
+        pattern_min_conf = 0.8
+        nn_blend_min = 0.1
+    elseif mode == "Legacy" then
+        nn_strong = 0.85
+        nn_ok     = 0.6
+        pattern_min_conf = 0.65
+        nn_blend_min = 0.3
+    end
+
+    ------------------------------------------------------------
+    -- High / OK confidence NN: let it lead, but still shape
+    ------------------------------------------------------------
+    local lc_good = lc_conf > 0.4
+    if nn_on and nn_pred and (nn_conf > nn_strong or (nn_conf > nn_ok and lc_good)) then
         local desync_res = nn_pred.desync
 
         -- Style-based prior on desync magnitude
         if desync_hint ~= 0 then
             local sign = desync_res >= 0 and 1 or -1
             local hinted = desync_hint * 29 * sign
-            desync_res = blend(desync_res, hinted, 0.2)
+            desync_res = blend(desync_res, hinted, 0.2 * nn_weight)
         end
 
         -- Head-bias: slight nudge
         if nn_pred.head_bias then
-            local head_nudge = nn_pred.head_bias * 6
-            desync_res = clamp(desync_res + head_nudge, -60, 60)
+            local head_nudge = nn_pred.head_bias * 6 * nn_weight
+            desync_res = desync_res + head_nudge
         end
+
+        -- Shape and clamp final NN desync
+        desync_res = clamp(shape_desync(desync_res), -29, 29)
 
         return {
             yaw    = nn_pred.yaw,
@@ -1141,24 +1359,27 @@ local function choose_strategy(ent, nn_pred, nn_conf, pattern, desync)
     ----------------------------------------------------------------
     -- Pattern-based overrides: only when NN is weak and lagcomp is OK
     ----------------------------------------------------------------
-    local can_use_pattern = (not nn_pred) or nn_conf < 0.35
-    if pattern and pattern.confidence > 0.7 and can_use_pattern and lc_conf > 0.3 then
+    local can_use_pattern = (not nn_pred) or nn_conf < (0.35 + (1 - nn_weight) * 0.2)
+    if pattern and pattern.confidence > pattern_min_conf and can_use_pattern and lc_conf > 0.3 then
         if pattern.pattern == "jitter" then
+            local ds = -desync
+            ds = clamp(shape_desync(ds * pattern_weight), -29, 29)
             return {
                 yaw    = nn_pred and nn_pred.yaw or 0,
-                desync = -desync,
+                desync = ds,
                 source = "pattern_jitter"
             }
         end
 
         if pattern.pattern == "static" then
-            -- static: trust current desync, maybe lightly bias magnitude
             local ds = desync
             if desync_hint ~= 0 then
                 local sign = ds >= 0 and 1 or -1
                 local hinted = desync_hint * 29 * sign
-                ds = blend(ds, hinted, 0.3)
+                ds = blend(ds, hinted, 0.3 * pattern_weight)
             end
+
+            ds = clamp(shape_desync(ds), -29, 29)
 
             return {
                 yaw    = nn_pred and nn_pred.yaw or 0,
@@ -1168,9 +1389,11 @@ local function choose_strategy(ent, nn_pred, nn_conf, pattern, desync)
         end
 
         if pattern.pattern == "flick" then
+            local ds = desync * (1.0 + 0.5 * pattern_weight)
+            ds = clamp(shape_desync(ds), -29, 29)
             return {
                 yaw    = nn_pred and nn_pred.yaw or 0,
-                desync = clamp(desync * 1.5, -29, 29),
+                desync = ds,
                 source = "pattern_flick"
             }
         end
@@ -1179,10 +1402,13 @@ local function choose_strategy(ent, nn_pred, nn_conf, pattern, desync)
     ----------------------------------------------------------------
     -- Medium confidence NN - blend with raw desync
     ----------------------------------------------------------------
-    if nn_pred and nn_conf > 0.25 then
+    if nn_on and nn_pred and nn_conf > nn_blend_min then
+        local ds_nn = clamp(nn_pred.desync, -29, 29)
+        local ds = blend(desync, ds_nn, nn_conf * blend_strength * nn_weight)
+        ds = clamp(shape_desync(ds), -29, 29)
         return {
             yaw    = nn_pred.yaw,
-            desync = blend(desync, clamp(nn_pred.desync, -29, 29), nn_conf),
+            desync = ds,
             source = "nn_blend"
         }
     end
@@ -1190,9 +1416,12 @@ local function choose_strategy(ent, nn_pred, nn_conf, pattern, desync)
     ----------------------------------------------------------------
     -- Low confidence fallback
     ----------------------------------------------------------------
+    local ds = clamp(desync, -29, 29)
+    ds = clamp(shape_desync(ds), -29, 29)
+
     return {
         yaw    = 0,
-        desync = clamp(desync, -29, 29),
+        desync = ds,
         source = "fallback"
     }
 end
@@ -1245,6 +1474,13 @@ local function resolve_entity(ent)
         lag_choke  = lc.choke_ticks,
         lag_conf   = lc.real_conf
     }
+
+    -- Update global dashboard snapshot (last resolved target)
+    last_nn_conf    = nn_conf or 0
+    last_pattern    = pattern and pattern.pattern or "none"
+    last_lag_status = lc.status or "unknown"
+    last_desync     = result.desync or 0
+    last_source     = result.source or "none"
 
 end
 
@@ -1354,6 +1590,34 @@ client.set_event_callback("paint", function()
             if new_y then y = new_y + 20 
         end
     end
+end)
+
+----------------------------------------------------------------
+-- Frost Dashboard
+----------------------------------------------------------------
+
+local dash_alpha = 0
+local dash_pulse = 0
+
+client.set_event_callback("paint", function()
+    if not ui.get(resolver_master) then return end
+    if not ui.get(dashboard_toggle) then return end
+
+    local x, y = 20, 300
+    local w, h = 260, 120
+
+    -- Frosted background animation
+    dash_pulse = dash_pulse + globals.frametime() * 2
+    dash_alpha = 120 + math.sin(dash_pulse) * 40
+
+    renderer.rectangle(x, y, w, h, 40, 40, 60, dash_alpha)
+
+    renderer.text(x + 10, y + 10, 180, 200, 255, 255, "Frost Dashboard")
+    renderer.text(x + 10, y + 30, 255, 255, 255, 255, "NN Conf: " .. string.format("%.2f", last_nn_conf or 0))
+    renderer.text(x + 10, y + 45, 255, 255, 255, 255, "Pattern: " .. (last_pattern or "none"))
+    renderer.text(x + 10, y + 60, 255, 255, 255, 255, "Lagcomp: " .. (last_lag_status or "unknown"))
+    renderer.text(x + 10, y + 75, 255, 255, 255, 255, "Desync: " .. string.format("%.1f", last_desync or 0))
+    renderer.text(x + 10, y + 90, 255, 255, 255, 255, "Source: " .. (last_source or "none"))
 end)
 
 ----------------------------------------------------------------
