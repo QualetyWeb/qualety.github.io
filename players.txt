@@ -95,11 +95,16 @@ ffi.cdef[[
 
 local lbl_header = ui.new_label(
     "RAGE", "Other",
-    "----------------------\aBBC0F3FF Evade Resolver V2 \aE8E8E8FF----------------------"
+    "----------------------\aBBC0F3FF Frost Resolver V2 \aE8E8E8FF----------------------"
 )
 
-local resolver_master = ui.new_checkbox("RAGE", "Other", "Evade Resolver V2", true)
+local resolver_master = ui.new_checkbox("RAGE", "Other", "Frost Resolver V2", true)
 local resolver_debug  = ui.new_checkbox("RAGE", "Other", "Resolver Debug")
+local hitlog_level = ui.new_combobox(
+    "RAGE", "Other",
+    "Resolver Hit/Miss Logs",
+    { "-", "Basic", "Detailed" }
+)
 
 local debug_options = ui.new_multiselect(
     "RAGE", "Other",
@@ -165,6 +170,25 @@ end
 
 local function vec_len2d(x, y)
     return sqrt((x or 0) * (x or 0) + (y or 0) * (y or 0))
+end
+
+local function log_hitmiss(level, fmt, ...)
+    local selected = ui.get(hitlog_level)
+
+    if selected == "-" then
+        return
+    end
+
+    if selected == "Basic" and level == "detailed" then
+        return
+    end
+
+    local ok, msg = pcall(string.format, fmt, ...)
+    if not ok or not msg then
+        msg = fmt
+    end
+
+    client.log("[FrostReso HM] " .. msg)
 end
 
 ----------------------------------------------------------------
@@ -906,14 +930,86 @@ local function register_hit(ent, features, desync, hitgroup)
     hit_miss_data[ent].hits = hit_miss_data[ent].hits + 1
 
     add_experience(ent, features, desync, true, hitgroup)
+
+    -- Logging
+    local res = resolver_states[ent] and resolver_states[ent].resolved or nil
+    local pat = aa_patterns[ent]
+    local lc  = get_lagcomp_info(ent)
+
+    -- Basic log: just outcome + a few key numbers
+    log_hitmiss(
+        "basic",
+        "HIT ent=%d hg=%d desync=%.1f src=%s nn_conf=%.2f",
+        ent,
+        hitgroup or -1,
+        desync or 0,
+        res and res.source or "unknown",
+        res and (res.nn_conf or 0) or 0
+    )
+
+    -- Detailed log: full resolver context at hit time
+    log_hitmiss(
+        "detailed",
+        "HIT ent=%d name='%s' hg=%d desync=%.1f resolved_desync=%.1f yaw=%.1f src=%s nn_conf=%.2f head_bias=%.2f pattern=%s pat_conf=%.2f lag_status=%s lag_choke=%d lag_conf=%.2f",
+        ent,
+        entity.get_player_name(ent) or "unknown",
+        hitgroup or -1,
+        desync or 0,
+        res and (res.desync or 0) or 0,
+        res and (res.yaw or 0) or 0,
+        res and res.source or "unknown",
+        res and (res.nn_conf or 0) or 0,
+        res and (res.head_bias or 0) or 0,
+        res and (res.pattern or "none") or "none",
+        pat and (pat.confidence or 0) or 0,
+        lc.status or "unknown",
+        lc.choke_ticks or 0,
+        lc.real_conf or 0
+    )
 end
+
 
 local function register_miss(ent, features, desync)
     hit_miss_data[ent] = hit_miss_data[ent] or { hits = 0, misses = 0 }
     hit_miss_data[ent].misses = hit_miss_data[ent].misses + 1
 
     add_experience(ent, features, desync, false, nil)
+
+    -- Logging
+    local res = resolver_states[ent] and resolver_states[ent].resolved or nil
+    local pat = aa_patterns[ent]
+    local lc  = get_lagcomp_info(ent)
+
+    -- Basic log: miss with a few key numbers
+    log_hitmiss(
+        "basic",
+        "MISS ent=%d desync=%.1f src=%s nn_conf=%.2f",
+        ent,
+        desync or 0,
+        res and res.source or "unknown",
+        res and (res.nn_conf or 0) or 0
+    )
+
+    -- Detailed log: full resolver context at miss time
+    log_hitmiss(
+        "detailed",
+        "MISS ent=%d name='%s' desync=%.1f resolved_desync=%.1f yaw=%.1f src=%s nn_conf=%.2f head_bias=%.2f pattern=%s pat_conf=%.2f lag_status=%s lag_choke=%d lag_conf=%.2f",
+        ent,
+        entity.get_player_name(ent) or "unknown",
+        desync or 0,
+        res and (res.desync or 0) or 0,
+        res and (res.yaw or 0) or 0,
+        res and res.source or "unknown",
+        res and (res.nn_conf or 0) or 0,
+        res and (res.head_bias or 0) or 0,
+        res and (res.pattern or "none") or "none",
+        pat and (pat.confidence or 0) or 0,
+        lc.status or "unknown",
+        lc.choke_ticks or 0,
+        lc.real_conf or 0
+    )
 end
+
 
 
 ----------------------------------------------------------------
