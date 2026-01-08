@@ -837,7 +837,8 @@ local function nn_predict(ent, features)
     -- pred[3] = normalized head bias (0..1) -> [-1..1]
 
     local resolved_yaw    = (pred[1] * 360) - 180
-    local resolved_desync = (pred[2] * 116) - 29
+    local resolved_desync = (pred[2] * 58) - 29
+
 
     local head_bias = 0
     if pred[3] ~= nil then
@@ -1143,7 +1144,7 @@ local function choose_strategy(ent, nn_pred, nn_conf, pattern, desync)
         if pattern.pattern == "jitter" then
             return {
                 yaw    = nn_pred and nn_pred.yaw or 0,
-                desync = (desync > 0 and -29 or 29),
+                desync = -desync,
                 source = "pattern_jitter"
             }
         end
@@ -1167,7 +1168,7 @@ local function choose_strategy(ent, nn_pred, nn_conf, pattern, desync)
         if pattern.pattern == "flick" then
             return {
                 yaw    = nn_pred and nn_pred.yaw or 0,
-                desync = (desync > 0 and 40 or -40),
+                desync = clamp(desync * 1.5, -29, 29)
                 source = "pattern_flick"
             }
         end
@@ -1179,7 +1180,7 @@ local function choose_strategy(ent, nn_pred, nn_conf, pattern, desync)
     if nn_pred and nn_conf > 0.25 then
         return {
             yaw    = nn_pred.yaw,
-            desync = blend(desync, nn_pred.desync, nn_conf),
+            desync = blend(desync, clamp(nn_pred.desync, -29, 29), nn_conf),
             source = "nn_blend"
         }
     end
@@ -1189,7 +1190,7 @@ local function choose_strategy(ent, nn_pred, nn_conf, pattern, desync)
     ----------------------------------------------------------------
     return {
         yaw    = 0,
-        desync = (desync > 0 and 29 or -29),
+        desync = clamp(desync, -29, 29),
         source = "fallback"
     }
 end
