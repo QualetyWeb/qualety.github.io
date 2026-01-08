@@ -141,7 +141,7 @@ local LAGCOMP_BIG_DELTA         = 0.05   -- big jump = likely real shift / break
 local LAGCOMP_HISTORY_DECAY     = 0.9    -- smoothing for confidence
 
 ----------------------------------------------------------------
--- UI Elements / Frost Resolver UI Framework
+-- UI Elements / Frost Resolver UI
 ----------------------------------------------------------------
 
 -- Frost-styled helpers
@@ -158,58 +158,20 @@ frost_label("❄  Frost Resolver V2  ❄")
 ui.new_label("RAGE", "Other", "\aC8C8C8FFAdaptive Neural Anti‑Aim Resolver")
 frost_divider()
 
--- Collapsible section system
--- Collapsible section system (single paint_ui)
-local sections = {}
-
-local function new_section(name)
-    local toggle = ui.new_checkbox("RAGE", "Other", name)
-    local elements = {}
-
-    local function add(elem)
-        table.insert(elements, elem)
-        ui.set_visible(elem, false)
-    end
-
-    table.insert(sections, { toggle = toggle, elements = elements })
-
-    return add
-end
-
-client.set_event_callback("paint_ui", function()
-    for _, sec in ipairs(sections) do
-        local open = ui.get(sec.toggle)
-        for _, elem in ipairs(sec.elements) do
-            ui.set_visible(elem, open)
-        end
-    end
-end)
-
-
--- Define section adders
-local add_resolver = new_section("Resolver Settings")
-local add_nn       = new_section("Neural Network")
-local add_patterns = new_section("Pattern Detection")
-local add_debug    = new_section("Debug & Dashboard")
-local add_tweaks   = new_section("Advanced Tweaks")
-local add_cache    = new_section("Data Management")
-
 ----------------------------------------------------------------
--- Resolver Settings Section (reusing resolver_master)
+-- Resolver Settings
 ----------------------------------------------------------------
+
+frost_label("Resolver Settings")
 
 resolver_master = ui.new_checkbox("RAGE", "Other", "Enable Frost Resolver")
-add_resolver(resolver_master)
-
 resolver_debug  = ui.new_checkbox("RAGE", "Other", "Resolver Debug Overlay")
-add_resolver(resolver_debug)
 
 hitlog_level = ui.new_combobox(
     "RAGE", "Other",
     "Hit/Miss Log Level",
     { "-", "Basic", "Detailed" }
 )
-add_resolver(hitlog_level)
 
 local resolver_mode = ui.new_combobox("RAGE", "Other", "Resolver Mode", {
     "Balanced",
@@ -218,43 +180,41 @@ local resolver_mode = ui.new_combobox("RAGE", "Other", "Resolver Mode", {
     "Experimental NN",
     "Legacy"
 })
-add_resolver(resolver_mode)
+
+frost_divider()
 
 ----------------------------------------------------------------
--- Neural Network Section
+-- Neural Network
 ----------------------------------------------------------------
+
+frost_label("Neural Network")
 
 local nn_enable = ui.new_checkbox("RAGE", "Other", "Enable Neural Network")
-add_nn(nn_enable)
 
 local nn_conf_bias = ui.new_slider("RAGE", "Other", "NN Confidence Bias", 0, 100, 50)
-add_nn(nn_conf_bias)
-
 local nn_blend_strength = ui.new_slider("RAGE", "Other", "NN Blend Strength", 0, 100, 60)
-add_nn(nn_blend_strength)
-
 local nn_train_during_match = ui.new_checkbox("RAGE", "Other", "Train During Match")
-add_nn(nn_train_during_match)
+
+frost_divider()
 
 ----------------------------------------------------------------
--- Pattern Detection Section
+-- Pattern Detection
 ----------------------------------------------------------------
+
+frost_label("Pattern Detection")
 
 local static_sensitivity = ui.new_slider("RAGE", "Other", "Static Sensitivity", 1, 50, 32)
-add_patterns(static_sensitivity)
-
 local jitter_sensitivity = ui.new_slider("RAGE", "Other", "Jitter Sensitivity", 1, 50, 5)
-add_patterns(jitter_sensitivity)
-
-local flick_sensitivity = ui.new_slider("RAGE", "Other", "Flick Sensitivity", 1, 100, 80)
-add_patterns(flick_sensitivity)
-
+local flick_sensitivity  = ui.new_slider("RAGE", "Other", "Flick Sensitivity", 1, 100, 80)
 local behavior_profiles_enable = ui.new_checkbox("RAGE", "Other", "Enable Behavior Profiles")
-add_patterns(behavior_profiles_enable)
+
+frost_divider()
 
 ----------------------------------------------------------------
--- Debug & Dashboard Section (reusing debug_options)
+-- Debug & Dashboard
 ----------------------------------------------------------------
+
+frost_label("Debug & Dashboard")
 
 debug_options = ui.new_multiselect(
     "RAGE", "Other",
@@ -270,30 +230,29 @@ debug_options = ui.new_multiselect(
         "Anti-Aim Pattern"
     }
 )
-add_debug(debug_options)
 
 local dashboard_toggle = ui.new_checkbox("RAGE", "Other", "Show Frost Dashboard")
-add_debug(dashboard_toggle)
+
+frost_divider()
 
 ----------------------------------------------------------------
--- Advanced Tweaks Section
+-- Advanced Tweaks
 ----------------------------------------------------------------
 
-local tweak_desync_shape = ui.new_slider("RAGE", "Other", "Desync Shaping Strength", 0, 100, 50)
-add_tweaks(tweak_desync_shape)
+frost_label("Advanced Tweaks")
 
-local tweak_lagcomp_trust = ui.new_slider("RAGE", "Other", "Lagcomp Trust Factor", 0, 100, 45)
-add_tweaks(tweak_lagcomp_trust)
-
+local tweak_desync_shape   = ui.new_slider("RAGE", "Other", "Desync Shaping Strength", 0, 100, 50)
+local tweak_lagcomp_trust  = ui.new_slider("RAGE", "Other", "Lagcomp Trust Factor", 0, 100, 45)
 local tweak_pattern_weight = ui.new_slider("RAGE", "Other", "Pattern Override Weight", 0, 100, 70)
-add_tweaks(tweak_pattern_weight)
+local tweak_nn_weight      = ui.new_slider("RAGE", "Other", "NN Override Weight", 0, 100, 60)
 
-local tweak_nn_weight = ui.new_slider("RAGE", "Other", "NN Override Weight", 0, 100, 60)
-add_tweaks(tweak_nn_weight)
+frost_divider()
 
 ----------------------------------------------------------------
--- Data Management Section (Clear Cache Button)
+-- Data Management
 ----------------------------------------------------------------
+
+frost_label("Data Management")
 
 local clear_cache_button = ui.new_button("RAGE", "Other", "Clear Resolver Cache", function()
     if writefile then
@@ -304,10 +263,10 @@ local clear_cache_button = ui.new_button("RAGE", "Other", "Clear Resolver Cache"
     experience_log = {}
     client.log("[FrostReso] Cleared behavior profiles and experience cache.")
 end)
-add_cache(clear_cache_button)
 
 frost_divider()
 ui.new_label("RAGE", "Other", "\aC8C8C8FFFrost Resolver V2 — Neural Anti‑Aim Engine")
+
 
 
 ----------------------------------------------------------------
