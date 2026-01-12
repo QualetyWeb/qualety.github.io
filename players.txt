@@ -5,18 +5,90 @@ USAGE OF THIS CODE WITHOUT PERMISSION WILL NOT BE TOLERATED
 ]]
 ----------------------------------------------------------------
 
-if writefile then
-    if not pcall(readfile, "nn_weights_latest.txt") then
-        writefile("nn_weights_latest.txt", "")
+local http = require "gamesense/http" or error("Missing Http library")
+local LIB_NAME = "enhanced_nn.lua"
+local VERSION_FILE = "enhanced_nn_version.txt"
+
+local GITHUB_LIB_URL = "https://raw.githubusercontent.com/QualetyWeb/reso_data/main/enhanced_nn.lua"
+local GITHUB_VERSION_URL = "https://raw.githubusercontent.com/QualetyWeb/reso_data/main/version.txt"
+
+local function read_local_version()
+    if not pcall(readfile, VERSION_FILE) then
+        return "0"
     end
+    return readfile(VERSION_FILE)
+end
+
+local function write_local_version(v)
+    if writefile then
+        writefile(VERSION_FILE, v)
+    end
+end
+
+local function download_lib(callback)
+    http.get(GITHUB_LIB_URL, function(success, response)
+        if success and response ~= nil and #response > 0 then
+            writefile(LIB_NAME, response)
+            client.log("[FrostReso] Downloaded enhanced_nn library.")
+            if callback then callback(true) end
+        else
+            client.log("[FrostReso] Failed to download enhanced_nn.lua")
+            if callback then callback(false) end
+        end
+    end)
+end
+
+local function check_for_update()
+    http.get(GITHUB_VERSION_URL, function(success, response)
+        if not success or not response then
+            client.log("[FrostReso] Could not check enhanced_nn version.")
+            return
+        end
+
+        local remote_version = tostring(response):gsub("%s+", "")
+        local local_version = read_local_version()
+
+        if remote_version ~= local_version then
+            client.log(string.format("[FrostReso] Updating enhanced_nn (%s → %s)", local_version, remote_version))
+            download_lib(function(ok)
+                if ok then
+                    write_local_version(remote_version)
+                end
+            end)
+        else
+            client.log("[FrostReso] enhanced_nn is up to date.")
+        end
+    end)
+end
+
+if not pcall(readfile, LIB_NAME) then
+    client.log("[FrostReso] enhanced_nn missing — downloading...")
+    download_lib(function(ok)
+        if ok then
+            write_local_version("0")
+        end
+    end)
+else
+    check_for_update()
 end
 
 ----------------------------------------------------------------
 -- Requirements / Dependencies
 ----------------------------------------------------------------
 
-local ffi         = require("ffi")
-local enhanced_nn = require("enhanced_nn")  -- Your NN module
+local ok, enhanced_nn = pcall(require, "enhanced_nn")
+if not ok then
+    client.log("[FrostReso] ERROR: Could not load enhanced_nn.lua")
+    enhanced_nn = {}
+end
+
+if writefile then
+    if not pcall(readfile, "nn_weights_latest.txt") then
+        writefile("nn_weights_latest.txt", "")
+    end
+end
+
+local ffi = require("ffi")
 
 ----------------------------------------------------------------
 -- GameSense API shortcuts 
@@ -146,64 +218,19 @@ local LAGCOMP_HISTORY_DECAY     = 0.9    -- smoothing for confidence
 
 -- Header
 ui.new_label("RAGE", "Other", "\aBBC0F3FF" .. "❄  Frost Resolver V2  ❄" .. "\aFFFFFFFF")
-ui.new_label("RAGE", "Other", "\aC8C8C8FFAdaptive Neural Anti‑Aim Resolver")
 
 
 ----------------------------------------------------------------
 -- Resolver Settings
 ----------------------------------------------------------------
 
-
 resolver_master = ui.new_checkbox("RAGE", "Other", "Enable Frost Resolver")
 resolver_debug  = ui.new_checkbox("RAGE", "Other", "Resolver Debug Overlay")
-
 hitlog_level = ui.new_combobox(
     "RAGE", "Other",
     "Hit/Miss Log Level",
     { "-", "Basic", "Detailed" }
 )
-
-local resolver_mode = ui.new_combobox("RAGE", "Other", "Resolver Mode", {
-    "Balanced",
-    "Aggressive",
-    "Safe",
-    "Experimental NN",
-    "Legacy"
-})
-
-
-
-----------------------------------------------------------------
--- Neural Network
-----------------------------------------------------------------
-
-
-
-local nn_enable = ui.new_checkbox("RAGE", "Other", "Enable Neural Network")
-
-local nn_conf_bias = ui.new_slider("RAGE", "Other", "NN Confidence Bias", 0, 100, 50)
-local nn_blend_strength = ui.new_slider("RAGE", "Other", "NN Blend Strength", 0, 100, 60)
-local nn_train_during_match = ui.new_checkbox("RAGE", "Other", "Train During Match")
-
-
-----------------------------------------------------------------
--- Pattern Detection
-----------------------------------------------------------------
-
-
-local static_sensitivity = ui.new_slider("RAGE", "Other", "Static Sensitivity", 1, 50, 32)
-local jitter_sensitivity = ui.new_slider("RAGE", "Other", "Jitter Sensitivity", 1, 50, 5)
-local flick_sensitivity  = ui.new_slider("RAGE", "Other", "Flick Sensitivity", 1, 100, 80)
-local behavior_profiles_enable = ui.new_checkbox("RAGE", "Other", "Enable Behavior Profiles")
-
-
-
-----------------------------------------------------------------
--- Debug & Dashboard
-----------------------------------------------------------------
-
-
-
 debug_options = ui.new_multiselect(
     "RAGE", "Other",
     "Resolver Debug Info",
@@ -218,22 +245,33 @@ debug_options = ui.new_multiselect(
         "Anti-Aim Pattern"
     }
 )
-
 local dashboard_toggle = ui.new_checkbox("RAGE", "Other", "Show Frost Dashboard")
-
+local display_adv_opt = ui.new_checkbox("RAGE", "Other", "Advanced Options")
+local resolver_mode = ui.new_combobox("RAGE", "Other", "Resolver Mode", {
+    "Balanced",
+    "Aggressive",
+    "Safe",
+    "Experimental NN",
+    "Legacy"
+})
+local nn_enable = ui.new_checkbox("RAGE", "Other", "Enable Neural Network", true)
+local behavior_profiles_enable = ui.new_checkbox("RAGE", "Other", "Enable Behavior Profiles", true)
+local nn_conf_bias = ui.new_slider("RAGE", "Other", "NN Confidence Bias", 0, 100, 50)
+local nn_blend_strength = ui.new_slider("RAGE", "Other", "NN Blend Strength", 0, 100, 60)
+local nn_train_during_match = ui.new_checkbox("RAGE", "Other", "Train During Match")
+local static_sensitivity = ui.new_slider("RAGE", "Other", "Static Sensitivity", 1, 50, 32)
+local jitter_sensitivity = ui.new_slider("RAGE", "Other", "Jitter Sensitivity", 1, 50, 5)
+local flick_sensitivity  = ui.new_slider("RAGE", "Other", "Flick Sensitivity", 1, 100, 80)
 
 
 ----------------------------------------------------------------
 -- Advanced Tweaks
 ----------------------------------------------------------------
-
-
-
-local tweak_desync_shape   = ui.new_slider("RAGE", "Other", "Desync Shaping Strength", 0, 100, 50)
-local tweak_lagcomp_trust  = ui.new_slider("RAGE", "Other", "Lagcomp Trust Factor", 0, 100, 45)
+local misc_label = ui.new_label("RAGE", "Other", "\aFFFFFFFF" .. "------------ >>" .. "\aBBC0F3FF" .. " Misc " .. "\aFFFFFFFF" .. "<< ------------")
+local tweak_desync_shape = ui.new_slider("RAGE", "Other", "Desync Shaping Strength", 0, 100, 50)
+local tweak_lagcomp_trust = ui.new_slider("RAGE", "Other", "Lagcomp Trust Factor", 0, 100, 45)
 local tweak_pattern_weight = ui.new_slider("RAGE", "Other", "Pattern Override Weight", 0, 100, 70)
-local tweak_nn_weight      = ui.new_slider("RAGE", "Other", "NN Override Weight", 0, 100, 60)
-
+local tweak_nn_weight = ui.new_slider("RAGE", "Other", "NN Override Weight", 0, 100, 60)
 
 ----------------------------------------------------------------
 -- Data Management
@@ -251,7 +289,38 @@ end)
 
 ui.new_label("RAGE", "Other", "\aC8C8C8FFFrost Resolver V2 — Neural Anti‑Aim Engine")
 
+----------------------------------------------------------------
+-- Set Vis Func
+----------------------------------------------------------------
 
+client.set_event_callback("paint_ui", function()
+    is_on = ui.get(resolver_master) == true
+    true_adv = ui.get(display_adv_opt) == true
+    is_debug = ui.get(resolver_debug) == true
+    is_nn = ui.get(nn_enable) == true
+    is_train = ui.get(nn_train_during_match) == true
+
+    ui.set_visible(resolver_debug, is_on)
+    --DEBUG
+    ui.set_visible(hitlog_level, is_on and is_debug)
+    ui.set_visible(debug_options, is_on and is_debug)
+    ui.set_visible(dashboard_toggle, is_on and is_debug)
+    --ADV
+    ui.set_visible(display_adv_opt, is_on)
+    ui.set_visible(nn_enable, is_on and true_adv)
+    ui.set_visible(nn_conf_bias, is_on and true_adv and is_nn)
+    ui.set_visible(nn_blend_strength, is_on and true_adv and is_nn)
+    ui.set_visible(nn_train_during_match, is_on and true_adv and is_nn)
+    ui.set_visible(static_sensitivity, is_on and true_adv and is_nn and is_train)
+    ui.set_visible(jitter_sensitivity, is_on and true_adv and is_nn and is_train)
+    ui.set_visible(flick_sensitivity, is_on and true_adv and is_nn and is_train)
+    ui.set_visible(behavior_profiles_enable, is_on and true_adv and is_nn)
+    ui.set_visible(misc_label, is_on and true_adv)
+    ui.set_visible(tweak_desync_shape, is_on and true_adv)
+    ui.set_visible(tweak_lagcomp_trust, is_on and true_adv)
+    ui.set_visible(tweak_pattern_weight, is_on and true_adv)
+    ui.set_visible(tweak_nn_weight, is_on and true_adv and is_nn)
+end)
 
 ----------------------------------------------------------------
 -- Constants & Enums
@@ -1407,11 +1476,11 @@ local function resolve_entity(ent)
     end
 
 
-    -- Apply resolver to GameSense
+    
     plist.set(ent, "Force body yaw", true)
     plist.set(ent, "Force body yaw value", result.desync)
 
-    -- Store for debug
+   
     local lc = get_lagcomp_info(ent)
 
     resolver_states[ent].resolved = {
@@ -1426,7 +1495,7 @@ local function resolve_entity(ent)
         lag_conf   = lc.real_conf
     }
 
-    -- Update global dashboard snapshot (last resolved target)
+    
     last_nn_conf    = nn_conf or 0
     last_pattern    = pattern and pattern.pattern or "none"
     last_lag_status = lc.status or "unknown"
@@ -1544,11 +1613,8 @@ client.set_event_callback("paint", function()
 end)
 
 ----------------------------------------------------------------
--- Frost Dashboard
+-- Dashboard
 ----------------------------------------------------------------
-
-local dash_alpha = 0
-local dash_pulse = 0
 
 client.set_event_callback("paint", function()
     if not ui.get(resolver_master) then return end
@@ -1557,11 +1623,6 @@ client.set_event_callback("paint", function()
     local x, y = 20, 300
     local w, h = 260, 120
 
-    -- Frosted background animation
-    dash_pulse = dash_pulse + globals.frametime() * 2
-    dash_alpha = 120 + math.sin(dash_pulse) * 40
-
-    renderer.rectangle(x, y, w, h, 40, 40, 60, dash_alpha)
 
     renderer.text(x + 10, y + 10, 180, 200, 255, 255, "Frost Dashboard")
     renderer.text(x + 10, y + 30, 255, 255, 255, 255, "NN Conf: " .. string.format("%.2f", last_nn_conf or 0))
