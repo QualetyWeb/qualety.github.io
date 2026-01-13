@@ -1519,126 +1519,322 @@ client.set_event_callback("net_update_start", function()
     end
 end)
 
-----------------------------------------------------------------
--- Training Tick (Part 3)
-----------------------------------------------------------------
 
-client.set_event_callback("net_update_end", function()
-    if not ui.get(resolver_master) then return end
-    resolver_states.train_nn()
-end)
 
 ----------------------------------------------------------------
--- Debug Rendering Helpers
+-- Enhanced Target Selection with Crosshair Priority
 ----------------------------------------------------------------
 
-local function draw_text(x, y, r, g, b, a, text)
-    renderer.text(x, y, r, g, b, a, "", 0, text)
-end
+local function get_best_debug_target()
+    local lp = entity.get_local_player()
+    if not lp or not entity.is_alive(lp) then return nil end
 
-local function draw_debug_for_entity(ent, y_offset)
-    local state = resolver_states[ent]
-    if not state or not state.resolved then return end
+    local enemies = entity.get_players(true)
+    if #enemies == 0 then return nil end
 
-    local res = state.resolved
-    local pattern = res.pattern or "none"
-    local conf = string.format("%.2f", res.nn_conf or 0)
-    local head_bias = res.head_bias ~= nil and string.format("%.2f", res.head_bias) or "0.00"
+    local lx, ly, lz = entity.get_prop(lp, "m_vecOrigin")
+    local cam_pitch, cam_yaw = client.camera_angles()
+    
+    local best_ent = nil
+    local best_score = -math.huge
 
-    local name = entity.get_player_name(ent) or ("ent " .. ent)
-    local lag_status = res.lag_status or "unknown"
-    local lag_choke  = res.lag_choke or 0
-    local lag_conf   = string.format("%.2f", res.lag_conf or 0)
-
-    local lines = {
-        "Resolver V2 Debug",
-        "Target: " .. name,
-        "Source: " .. res.source,
-        "NN Conf: " .. conf,
-        "Resolved Desync: " .. string.format("%.1f", res.desync),
-        "Head Bias: " .. head_bias,
-        "Pattern: " .. pattern,
-        "Lagcomp: " .. lag_status .. " | choke=" .. lag_choke .. " | conf=" .. lag_conf
-    }
-
-
-    local x = 20
-    local y = y_offset
-
-    for i = 1, #lines do
-        draw_text(x, y, 200, 200, 255, 255, lines[i])
-        y = y + 12
-    end
-    -- Simple lagcomp confidence bar
-    local bar_x = 200
-    local bar_y = y_offset - 4
-    local bar_w = 80
-    local bar_h = 4
-
-    local lc_val = res.lag_conf or 0
-    local fill_w = bar_w * lc_val
-
-    -- Background
-    renderer.rectangle(bar_x, bar_y, bar_w, bar_h, 30, 30, 60, 180)
-
-    -- Fill (green when high, yellow mid, red low)
-    local r, g, b = 255, 80, 80
-    if lc_val > 0.7 then
-        r, g, b = 80, 255, 120
-    elseif lc_val > 0.4 then
-        r, g, b = 230, 200, 80
+    for _, ent in ipairs(enemies) do
+        if entity.is_alive(ent) then
+            local ex, ey, ez = entity.get_prop(ent, "m_vecOrigin")
+            
+            -- Distance score (closer is better)
+            local dx, dy, dz = ex - lx, ey - ly, ez - lz
+            local dist_3d = math.sqrt(dx*dx + dy*dy + dz*dz)
+            local dist_score = 1 / (1 + dist_3d / 500) -- normalize to 0-1
+            
+            -- Crosshair proximity score
+            local yaw_to_target = math.deg(math.atan2(dy, dx))
+            local pitch_to_target = -math.deg(math.atan2(dz, math.sqrt(dx*dx + dy*dy)))
+            
+            local yaw_diff = math.abs(normalize_yaw(yaw_to_target - cam_yaw))
+            local pitch_diff = math.abs(pitch_to_target - cam_pitch)
+            local angle_diff = math.sqrt(yaw_diff*yaw_diff + pitch_diff*pitch_diff)
+            
+            local crosshair_score = 1 / (1 + angle_diff / 30) -- normalize
+            
+            -- Combined score (crosshair 70%, distance 30%)
+            local score = crosshair_score * 0.7 + dist_score * 0.3
+            
+            if score > best_score then
+                best_score = score
+                best_ent = ent
+            end
+        end
     end
 
-    renderer.rectangle(bar_x, bar_y, fill_w, bar_h, r, g, b, 220)
-
-    return y
+    return best_ent
 end
 
+
+
 ----------------------------------------------------------------
--- Debug Overlay Callback
+-- Debug Panel
 ----------------------------------------------------------------
+
+local panel_alpha = 0
+local panel_target_alpha = 0
+local last_debug_target = nil
+local panel_animations = {}
+
+local function lerp(a, b, t)
+    return a + (b - a) * t
+end
+
+local function ease_out_cubic(t)
+    return 1 - math.pow(1 - t, 3)
+end
 
 client.set_event_callback("paint", function()
     if not ui.get(resolver_master) then return end
     if not ui.get(resolver_debug) then return end
 
-    local enemies = entity.get_players(true)
-    local y = 200
-
-    for i = 1, #enemies do
-        local new_y = draw_debug_for_entity(enemies[i], y) 
-            if new_y then y = new_y + 20 
+    local ent = get_best_debug_target()
+    
+    -- Smooth fade in/out
+    local dt = globals.frametime()
+    if ent then
+        panel_target_alpha = 1
+        last_debug_target = ent
+    else
+        panel_target_alpha = 0
+        if panel_alpha < 0.05 then
+            last_debug_target = nil
         end
     end
+    
+    panel_alpha = lerp(panel_alpha, panel_target_alpha, dt * 8)
+    
+    if panel_alpha < 0.01 then return end
+    if not last_debug_target then return end
+    
+    ent = last_debug_target
+    local name = entity.get_player_name(ent) or "Unknown"
+    
+    -- Get all resolver data
+    local state = resolver_states[ent]
+    local res = state and state.resolved
+    local hits = (hit_miss_data[ent] and hit_miss_data[ent].hits) or 0
+    local misses = (hit_miss_data[ent] and hit_miss_data[ent].misses) or 0
+    local lc = get_lagcomp_info(ent)
+    local pattern = aa_patterns[ent]
+    
+    if not res then return end
+    
+    -- Panel dimensions
+    local x, y = 20, 250
+    local w, h = 280, 500
+    local padding = 12
+    local line_h = 18
+    
+    -- Apply fade animation
+    local alpha_mult = ease_out_cubic(panel_alpha)
+    
+    ----------------------------------------------------------------
+    -- Background with frosted glass effect
+    ----------------------------------------------------------------
+    -- Outer glow
+    renderer.rectangle(x - 2, y - 2, w + 4, h + 4, 100, 150, 255, 15 * alpha_mult)
+    
+    -- Main background
+    renderer.rectangle(x, y, w, h, 15, 18, 25, 220 * alpha_mult)
+    
+    -- Subtle gradient overlay
+    for i = 0, 20 do
+        local grad_alpha = (20 - i) * 2 * alpha_mult
+        renderer.rectangle(x, y + i * 2, w, 2, 40, 60, 90, grad_alpha)
+    end
+    
+    -- Border frame
+    local border_pulse = 150 + math.sin(globals.curtime() * 2) * 40
+    renderer.rectangle(x, y, w, 2, 100, 180, 255, border_pulse * alpha_mult / 255)
+    renderer.rectangle(x, y + h - 2, w, 2, 100, 180, 255, border_pulse * alpha_mult / 255)
+    renderer.rectangle(x, y, 2, h, 100, 180, 255, border_pulse * alpha_mult / 255)
+    renderer.rectangle(x + w - 2, y, 2, h, 100, 180, 255, border_pulse * alpha_mult / 255)
+    
+    ----------------------------------------------------------------
+    -- Helper drawing functions
+    ----------------------------------------------------------------
+    local current_y = y + padding
+    
+    local function draw_text(text, color_r, color_g, color_b, size_mod)
+        size_mod = size_mod or 0
+        local a = 255 * alpha_mult
+        renderer.text(x + padding, current_y, color_r, color_g, color_b, a, nil, 0, text)
+        current_y = current_y + line_h + size_mod
+    end
+    
+    local function draw_section_header(text)
+        current_y = current_y + 6
+        renderer.rectangle(x + padding, current_y, w - padding * 2, 1, 80, 120, 180, 120 * alpha_mult)
+        current_y = current_y + 8
+        draw_text(text, 140, 200, 255, 2)
+    end
+    
+    local function draw_bar(label, value, max_val, bar_color_r, bar_color_g, bar_color_b)
+        draw_text(label, 200, 200, 200, -4)
+        
+        local bar_y = current_y
+        local bar_w = w - padding * 2
+        local bar_h = 6
+        local fill_w = (value / max_val) * bar_w
+        
+        -- Background
+        renderer.rectangle(x + padding, bar_y, bar_w, bar_h, 30, 35, 45, 180 * alpha_mult)
+        
+        -- Fill with gradient
+        for i = 0, fill_w, 2 do
+            local grad = 1 - (i / bar_w) * 0.3
+            renderer.rectangle(
+                x + padding + i, bar_y, 2, bar_h,
+                bar_color_r * grad, bar_color_g * grad, bar_color_b * grad,
+                200 * alpha_mult
+            )
+        end
+        
+        -- Value text
+        local val_text = string.format("%.0f%%", (value / max_val) * 100)
+        renderer.text(x + w - padding - 5, bar_y - 2, 255, 255, 255, 180 * alpha_mult, "r", 0, val_text)
+        
+        current_y = current_y + bar_h + 10
+    end
+    
+    local function draw_indicator(label, value, color_r, color_g, color_b)
+        local label_w = renderer.measure_text(nil, label)
+        renderer.text(x + padding, current_y, 160, 160, 160, 255 * alpha_mult, nil, 0, label)
+        renderer.text(x + padding + label_w + 8, current_y, color_r, color_g, color_b, 255 * alpha_mult, nil, 0, value)
+        current_y = current_y + line_h
+    end
+    
+    ----------------------------------------------------------------
+    -- Title
+    ----------------------------------------------------------------
+    renderer.text(x + padding, current_y, 180, 220, 255, 255 * alpha_mult, "b", 0, "FROST RESOLVER")
+    renderer.text(x + w - padding - 5, current_y, 120, 120, 120, 200 * alpha_mult, "r", 0, "V2")
+    current_y = current_y + 24
+    
+    ----------------------------------------------------------------
+    -- Status Section
+    ----------------------------------------------------------------
+    draw_section_header("STATUS")
+    
+    local status_color = {100, 255, 100}
+    if res.source == "fallback" then
+        status_color = {255, 180, 100}
+    end
+    
+    draw_indicator("Mode:", res.source:upper(), status_color[1], status_color[2], status_color[3])
+    draw_indicator("Resolver:", "ACTIVE", 100, 255, 100)
+    
+    ----------------------------------------------------------------
+    -- Target Section
+    ----------------------------------------------------------------
+    draw_section_header("TARGET")
+    
+    draw_indicator("Name:", name, 255, 255, 255)
+    
+    local lp = entity.get_local_player()
+    if lp then
+        local lx, ly, lz = entity.get_prop(lp, "m_vecOrigin")
+        local ex, ey, ez = entity.get_prop(ent, "m_vecOrigin")
+        local dist = math.sqrt((ex-lx)^2 + (ey-ly)^2 + (ez-lz)^2) / 52.5 -- units to meters
+        draw_indicator("Distance:", string.format("%.1fm", dist), 255, 255, 100)
+    end
+    
+    draw_indicator("Health:", tostring(entity.get_prop(ent, "m_iHealth") or 0), 255, 100, 100)
+    
+    ----------------------------------------------------------------
+    -- Neural Network Section
+    ----------------------------------------------------------------
+    draw_section_header("NEURAL NETWORK")
+    
+    draw_bar("Confidence", res.nn_conf, 1.0, 100, 200, 255)
+    
+    draw_indicator("Prediction:", string.format("%.1f°", res.yaw), 150, 230, 255)
+    draw_indicator("Desync:", string.format("%.1f°", res.desync), 255, 200, 100)
+    
+    if res.head_bias and res.head_bias ~= 0 then
+        local bias_dir = res.head_bias > 0 and "RIGHT" or "LEFT"
+        local bias_col = res.head_bias > 0 and {255, 150, 150} or {150, 150, 255}
+        draw_indicator("Head Bias:", bias_dir, bias_col[1], bias_col[2], bias_col[3])
+    end
+    
+    ----------------------------------------------------------------
+    -- Pattern Analysis Section
+    ----------------------------------------------------------------
+    draw_section_header("PATTERN ANALYSIS")
+    
+    local pat_name = res.pattern or "NONE"
+    local pat_colors = {
+        jitter = {255, 100, 255},
+        static = {100, 255, 255},
+        flick = {255, 255, 100},
+        none = {150, 150, 150}
+    }
+    local pat_col = pat_colors[pat_name:lower()] or {150, 150, 150}
+    
+    draw_indicator("Pattern:", pat_name:upper(), pat_col[1], pat_col[2], pat_col[3])
+    
+    if pattern then
+        draw_bar("Pattern Conf", pattern.confidence or 0, 1.0, 200, 150, 255)
+    end
+    
+    ----------------------------------------------------------------
+    -- Lag Compensation Section
+    ----------------------------------------------------------------
+    draw_section_header("LAG COMPENSATION")
+    
+    local lag_colors = {
+        real = {100, 255, 100},
+        choking = {255, 200, 100},
+        updating = {255, 255, 100},
+        unknown = {150, 150, 150}
+    }
+    local lag_col = lag_colors[lc.status] or {150, 150, 150}
+    
+    draw_indicator("Status:", lc.status:upper(), lag_col[1], lag_col[2], lag_col[3])
+    draw_indicator("Choke Ticks:", tostring(lc.choke_ticks), 255, 200, 100)
+    draw_bar("LC Confidence", lc.real_conf, 1.0, 100, 255, 200)
+    
+    ----------------------------------------------------------------
+    -- Performance Section
+    ----------------------------------------------------------------
+    draw_section_header("PERFORMANCE")
+    
+    local total = hits + misses
+    local hitrate = total > 0 and (hits / total) or 0
+    
+    draw_indicator("Hits:", tostring(hits), 100, 255, 100)
+    draw_indicator("Misses:", tostring(misses), 255, 100, 100)
+    draw_bar("Hit Rate", hitrate, 1.0, 100, 255, 150)
+    
+    ----------------------------------------------------------------
+    -- Footer timestamp
+    ----------------------------------------------------------------
+    current_y = y + h - padding - 12
+    local time_text = os.date("%H:%M:%S")
+    renderer.text(x + w - padding - 5, current_y, 100, 100, 100, 180 * alpha_mult, "r", 0, time_text)
 end)
-
-----------------------------------------------------------------
--- Dashboard
-----------------------------------------------------------------
-
-client.set_event_callback("paint", function()
-    if not ui.get(resolver_master) then return end
-    if not ui.get(dashboard_toggle) then return end
-
-    local x, y = 20, 300
-    local w, h = 260, 120
-
-
-    renderer.text(x + 10, y + 10, 180, 200, 255, 255, "Frost Dashboard")
-    renderer.text(x + 10, y + 30, 255, 255, 255, 255, "NN Conf: " .. string.format("%.2f", last_nn_conf or 0))
-    renderer.text(x + 10, y + 45, 255, 255, 255, 255, "Pattern: " .. (last_pattern or "none"))
-    renderer.text(x + 10, y + 60, 255, 255, 255, 255, "Lagcomp: " .. (last_lag_status or "unknown"))
-    renderer.text(x + 10, y + 75, 255, 255, 255, 255, "Desync: " .. string.format("%.1f", last_desync or 0))
-    renderer.text(x + 10, y + 90, 255, 255, 255, 255, "Source: " .. (last_source or "none"))
-end)
-
 ----------------------------------------------------------------
 -- Cleanup Logic
 ----------------------------------------------------------------
 
 local CLEANUP_INTERVAL = 2.0
 
+
+local CLEANUP_INTERVAL = 2.0
+
 client.set_event_callback("net_update_end", function()
+    if not ui.get(resolver_master) then return end
+    
+    
+    resolver_states.train_nn()
+    
+    -- Cleanup Logic
     local now = globals.curtime()
     if now - last_cleanup_time < CLEANUP_INTERVAL then
         return
@@ -1666,7 +1862,6 @@ client.set_event_callback("net_update_end", function()
         end
     end
 end)
-
 ----------------------------------------------------------------
 -- Persistence: Behavior Profiles & Experiences
 ----------------------------------------------------------------
