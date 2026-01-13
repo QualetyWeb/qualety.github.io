@@ -12,11 +12,25 @@ local VERSION_FILE = "enhanced_nn_version.txt"
 local GITHUB_LIB_URL = "https://raw.githubusercontent.com/QualetyWeb/reso_data/main/enhanced_nn.lua"
 local GITHUB_VERSION_URL = "https://raw.githubusercontent.com/QualetyWeb/reso_data/main/version.txt"
 
+
+
 local function read_local_version()
-    if not pcall(readfile, VERSION_FILE) then
+    if type(readfile) ~= "function" then
         return "0"
     end
-    return readfile(VERSION_FILE)
+    local ok, content = pcall(readfile, VERSION_FILE)
+    if not ok or type(content) ~= "string" or #content == 0 then
+        return "0"
+    end
+    return content
+end
+
+local function file_exists_nonempty(name)
+    if type(readfile) ~= "function" then
+        return false
+    end
+    local ok, content = pcall(readfile, name)
+    return ok and type(content) == "string" and #content > 0
 end
 
 local function write_local_version(v)
@@ -24,6 +38,8 @@ local function write_local_version(v)
         writefile(VERSION_FILE, v)
     end
 end
+
+
 
 local function try_require_enhanced()
     local ok, mod = pcall(require, "enhanced_nn")
@@ -40,8 +56,27 @@ local function download_lib(callback)
         if success and response ~= nil and #response > 0 then
             if writefile then
                 writefile(LIB_NAME, response)
-                client.log("[FrostReso] Downloaded enhanced_nn library.")
-                pcall(try_require_enhanced)
+                client.log("[FrostReso] Downloaded enhanced_nn library to disk.")
+                -- Try to load the returned Lua source as a chunk (use load or loadstring)
+                local load_func = load or loadstring
+                if type(load_func) == "function" then
+                    local ok, chunk_or_err = pcall(load_func, response, "enhanced_nn_chunk")
+                    if ok and type(chunk_or_err) == "function" then
+                        local exec_ok, result_or_err = pcall(chunk_or_err)
+                        if exec_ok and type(result_or_err) == "table" then
+                            enhanced_nn = result_or_err
+                            client.log("[FrostReso] enhanced_nn loaded from downloaded chunk.")
+                        else
+                            client.log("[FrostReso] downloaded chunk executed but did not return a module table: " .. tostring(result_or_err))
+                            client.log("[FrostReso] Keep the file on disk; you may need to edit it to return a module table or place a proper module file.")
+                        end
+                    else
+                        client.log("[FrostReso] Could not compile downloaded enhanced_nn: " .. tostring(chunk_or_err))
+                        client.log("[FrostReso] Keep the file on disk for inspection.")
+                    end
+                else
+                    client.log("[FrostReso] No load/loadstring available in this environment; cannot safely execute downloaded code.")
+                end
             else
                 client.log("[FrostReso] writefile not available; cannot persist downloaded library.")
             end
@@ -64,6 +99,7 @@ local function check_for_update()
         local local_version = read_local_version()
 
         if remote_version ~= local_version then
+            client.log(string.format("[FrostReso] Found remote enhanced_nn version %s (local %s).", remote_version, local_version))
             client.log(string.format("[FrostReso] Updating enhanced_nn (%s → %s)", local_version, remote_version))
             download_lib(function(ok)
                 if ok then
@@ -76,8 +112,10 @@ local function check_for_update()
     end)
 end
 
-if not pcall(readfile, LIB_NAME) then
-    client.log("[FrostReso] enhanced_nn missing — downloading...")
+
+if not file_exists_nonempty(LIB_NAME) then
+    client.log("[FrostReso] enhanced_nn missing — will download...")
+    client.log("[FrostReso] Remote download permitted by user; attempting download.")
     download_lib(function(ok)
         if ok then
             write_local_version("0")
@@ -92,20 +130,39 @@ end
 ----------------------------------------------------------------
 
 -- Safe require for enhanced_nn: prefer nil when not available so callers can detect absence.
+-- Safe local loader: prefer loading the local file (if present) via load/loadstring.
 local enhanced_nn = nil
 do
-    local ok, mod = pcall(require, "enhanced_nn")
-    if ok and type(mod) == "table" then
-        enhanced_nn = mod
-        client.log("[FrostReso] enhanced_nn loaded.")
+    if file_exists_nonempty(LIB_NAME) then
+        local ok, src = pcall(readfile, LIB_NAME)
+        if ok and type(src) == "string" then
+            local load_func = load or loadstring
+            if type(load_func) == "function" then
+                local ok2, chunk_or_err = pcall(load_func, src, "enhanced_nn_local")
+                if ok2 and type(chunk_or_err) == "function" then
+                    local exec_ok, result_or_err = pcall(chunk_or_err)
+                    if exec_ok and type(result_or_err) == "table" then
+                        enhanced_nn = result_or_err
+                        client.log("[FrostReso] enhanced_nn loaded from local file.")
+                    else
+                        client.log("[FrostReso] Local enhanced_nn executed but did not return a module table: " .. tostring(result_or_err))
+                    end
+                else
+                    client.log("[FrostReso] Could not compile local enhanced_nn: " .. tostring(chunk_or_err))
+                end
+            else
+                client.log("[FrostReso] load/loadstring not available; cannot execute local module.")
+            end
+        else
+            client.log("[FrostReso] readfile failed for local enhanced_nn.")
+        end
     else
-        enhanced_nn = nil
-        client.log("[FrostReso] enhanced_nn not loaded. Will attempt to download or load later.")
+        client.log("[FrostReso] enhanced_nn not present locally.")
     end
 end
 
 if writefile then
-    if not pcall(readfile, "nn_weights_latest.txt") then
+    if not file_exists_nonempty("nn_weights_latest.txt") then
         writefile("nn_weights_latest.txt", "")
     end
 end
@@ -186,21 +243,44 @@ ffi.cdef[[
 ----------------------------------------------------------------
 -- Global Resolver State Tables
 ----------------------------------------------------------------
-
 -- Per-entity resolver state (movement history, last resolved angles, etc.)
-local resolver_states      = setmetatable({}, { __mode = "k" })
+local resolver_states      = {}
 
 -- Per-entity hit/miss info
-local hit_miss_data        = setmetatable({}, { __mode = "k" })
+local hit_miss_data        = {}
 
 -- Per-entity anti-aim pattern state
-local aa_patterns          = setmetatable({}, { __mode = "k" })
+local aa_patterns          = {}
 
 -- NN-related per-entity prediction cache (short term)
-local prediction_cache     = setmetatable({}, { __mode = "k" })
+local prediction_cache     = {}
 
--- Last cleanup time
+-- Per-entity lag compensation / choke state
+local lagcomp_state        = {}
+
+-- Periodic cleanup to avoid unbounded memory growth (runs every 10 seconds)
 local last_cleanup_time    = 0
+local function periodic_cleanup()
+    local now = globals.curtime and globals.curtime() or 0
+    if now - last_cleanup_time < 10 then return end
+    last_cleanup_time = now
+
+    local function sweep(tbl)
+        for ent, _ in pairs(tbl) do
+            local ok, alive = pcall(entity.is_alive, ent)
+            if not ok or not alive then
+                tbl[ent] = nil
+            end
+        end
+    end
+
+    sweep(resolver_states)
+    sweep(hit_miss_data)
+    sweep(aa_patterns)
+    sweep(prediction_cache)
+    sweep(lagcomp_state)
+end
+
 
 -- Prediction cache duration
 local PREDICTION_CACHE_SEC = 0.03
@@ -218,8 +298,7 @@ local experience_log = {}
 -- Limit how many experiences we keep on disk (to avoid bloat)
 local MAX_EXPERIENCES_ON_DISK = 8000
 
--- Per-entity lag compensation / choke state
-local lagcomp_state = setmetatable({}, { __mode = "k" })
+
 
 -- Live dashboard state
 local last_nn_conf   = 0
@@ -301,8 +380,10 @@ local tweak_nn_weight = ui.new_slider("RAGE", "Other", "NN Override Weight", 0, 
 
 local clear_cache_button = ui.new_button("RAGE", "Other", "Clear Resolver Cache", function()
     if writefile then
-        writefile(BEHAVIOR_PROFILE_FILE, "{}")
-        writefile(EXPERIENCE_LOG_FILE, "[]")
+        pcall(function()
+            writefile(BEHAVIOR_PROFILE_FILE, "{}")
+            writefile(EXPERIENCE_LOG_FILE, "return {}")
+        end)
     end
     behavior_profiles = {}
     experience_log = {}
@@ -322,6 +403,8 @@ client.set_event_callback("paint_ui", function()
     local is_nn = ui.get(nn_enable) == true
     local is_train = ui.get(nn_train_during_match) == true
 
+    periodic_cleanup() -- My funny Lil cleanup Func (~10s)
+    
     ui.set_visible(resolver_debug, is_on)
     --DEBUG
     ui.set_visible(hitlog_level, is_on and is_debug)
@@ -497,7 +580,13 @@ local function get_simtime(ent)
 end
 
 local function get_tickcount()
-    return globals.tickcount and globals.tickcount() or floor(globals.curtime() / globals.tickinterval())
+    if type(globals.tickcount) == "function" then
+        return globals.tickcount()
+    end
+    local cur = globals.curtime and globals.curtime() or 0
+    local ti = (globals.tickinterval and globals.tickinterval()) or 0.015
+    if ti <= 0 then ti = 0.015 end
+    return math.floor(cur / ti)
 end
 
 local function init_lagcomp_state(ent)
@@ -520,6 +609,16 @@ local function update_lagcomp_predictor(ent)
     local st = init_lagcomp_state(ent)
     local simtime = get_simtime(ent)
     local tick = get_tickcount()
+
+    if st.last_simtime and simtime + 1.0 < st.last_simtime then
+        st.choke_ticks = 0
+        st.last_delta = 0
+        st.real_update_conf = 0
+        st.last_tick = tick
+        st.last_simtime = simtime
+        st.status = "idle"
+        return st
+    end
 
     if st.last_tick == 0 then
         st.last_tick = tick
@@ -692,8 +791,16 @@ end
 ----------------------------------------------------------------
 -- Animation Layer Sampling
 ----------------------------------------------------------------
-
 local function sample_layer(ent, idx)
+    if type(idx) ~= "number" or idx < 0 or idx > 64 then
+        return {
+            weight = 0,
+            cycle = 0,
+            playback = 0,
+            sequence = 0
+        }
+    end
+
     local layer = get_animlayer(ent, idx)
     if not layer then
         return {
@@ -848,7 +955,16 @@ local function detect_patterns(ent, features, desync, yaw)
 
     pat.last_yaw    = yaw
     pat.last_desync = desync
+    pat.last_update = globals.curtime and globals.curtime() or pat.last_update
 
+    if pat.pattern ~= "none" then
+        if abs(yaw_delta) < 4 and abs(desync_delta) < 1 then
+            pat.confidence = clamp(pat.confidence - 0.02, 0, 1)
+            if pat.confidence < 0.25 then
+                pat.pattern = "none"
+            end
+        end
+    end
     ------------------------------------------------------------
     -- Jitter detection: require more consecutive large swings
     ------------------------------------------------------------
@@ -904,9 +1020,17 @@ end
 -- Behavior Signature n Profiles
 ----------------------------------------------------------------
 
+local function round_nearest(x)
+    if x >= 0 then
+        return math.floor(x + 0.5)
+    else
+        return math.ceil(x - 0.5)
+    end
+end
+
 local function quantize(value, step, min_v, max_v)
     value = clamp(value, min_v, max_v)
-    return floor(value / step + 0.5) * step
+    return round_nearest(value / step) * step
 end
 
 local function get_behavior_signature(ent, pat)
@@ -1082,7 +1206,9 @@ local function add_experience(ent, features, actual_desync, hit_success, hitgrou
     local reward = hit_success and 1 or -1
 
     -- Feed into NN replay system
-    enhanced_nn.add_experience(features, target, reward, hit_success)
+    if type(enhanced_nn) == "table" and type(enhanced_nn.add_experience) == "function" then
+        pcall(enhanced_nn.add_experience, features, target, reward, hit_success)
+    end
 
     -- Also store a lightweight copy for cross-match pretraining
     experience_log[#experience_log + 1] = {
@@ -1104,22 +1230,31 @@ local TRAIN_INTERVAL = 0.15
 local last_train_time = 0
 
 local function train_nn()
+
     if nn_train_during_match and not ui.get(nn_train_during_match) then
         return
     end
 
-    local now = globals.curtime()
+    if type(enhanced_nn) ~= "table" then
+        return
+    end
+
+    local now = globals.curtime and globals.curtime() or 0
     if now - last_train_time < TRAIN_INTERVAL then
         return
     end
     last_train_time = now
 
-    local batch = enhanced_nn.sample_batch()
-    if batch then
-        enhanced_nn.train(batch)
+    if type(enhanced_nn.sample_batch) == "function" then
+        local ok, batch = pcall(enhanced_nn.sample_batch)
+        if ok and batch and type(enhanced_nn.train) == "function" then
+            pcall(enhanced_nn.train, batch)
+        end
     end
 
-    enhanced_nn.save()
+    if type(enhanced_nn.save) == "function" then
+        pcall(enhanced_nn.save)
+    end
 end
 
 
@@ -1714,7 +1849,6 @@ client.set_event_callback("paint", function()
         -- Background
         renderer.rectangle(x + padding, bar_y, bar_w, bar_h, 30, 35, 45, 180 * alpha_mult)
         
-        -- Fill with gradient
         for i = 0, fill_w, 2 do
             local grad = 1 - (i / bar_w) * 0.3
             renderer.rectangle(
@@ -1723,8 +1857,7 @@ client.set_event_callback("paint", function()
                 200 * alpha_mult
             )
         end
-        
-        -- Value text
+
         local val_text = string.format("%.0f%%", (value / max_val) * 100)
         renderer.text(x + w - padding - 5, bar_y - 2, 255, 255, 255, 180 * alpha_mult, "r", 0, val_text)
         
@@ -1737,17 +1870,11 @@ client.set_event_callback("paint", function()
         renderer.text(x + padding + label_w + 8, current_y, color_r, color_g, color_b, 255 * alpha_mult, nil, 0, value)
         current_y = current_y + line_h
     end
-    
-    ----------------------------------------------------------------
-    -- Title
-    ----------------------------------------------------------------
+
     renderer.text(x + padding, current_y, 180, 220, 255, 255 * alpha_mult, "b", 0, "FROST RESOLVER")
     renderer.text(x + w - padding - 5, current_y, 120, 120, 120, 200 * alpha_mult, "r", 0, "V2")
     current_y = current_y + 24
     
-    ----------------------------------------------------------------
-    -- Status Section
-    ----------------------------------------------------------------
     draw_section_header("STATUS")
     
     local status_color = {100, 255, 100}
@@ -1757,10 +1884,7 @@ client.set_event_callback("paint", function()
     
     draw_indicator("Mode:", res.source:upper(), status_color[1], status_color[2], status_color[3])
     draw_indicator("Resolver:", "ACTIVE", 100, 255, 100)
-    
-    ----------------------------------------------------------------
-    -- Target Section
-    ----------------------------------------------------------------
+
     draw_section_header("TARGET")
     
     draw_indicator("Name:", name, 255, 255, 255)
@@ -1775,9 +1899,6 @@ client.set_event_callback("paint", function()
     
     draw_indicator("Health:", tostring(entity.get_prop(ent, "m_iHealth") or 0), 255, 100, 100)
     
-    ----------------------------------------------------------------
-    -- Neural Network Section
-    ----------------------------------------------------------------
     draw_section_header("NEURAL NETWORK")
     
     draw_bar("Confidence", res.nn_conf, 1.0, 100, 200, 255)
@@ -1791,9 +1912,6 @@ client.set_event_callback("paint", function()
         draw_indicator("Head Bias:", bias_dir, bias_col[1], bias_col[2], bias_col[3])
     end
     
-    ----------------------------------------------------------------
-    -- Pattern Analysis Section
-    ----------------------------------------------------------------
     draw_section_header("PATTERN ANALYSIS")
     
     local pat_name = res.pattern or "NONE"
@@ -1810,10 +1928,7 @@ client.set_event_callback("paint", function()
     if pattern then
         draw_bar("Pattern Conf", pattern.confidence or 0, 1.0, 200, 150, 255)
     end
-    
-    ----------------------------------------------------------------
-    -- Lag Compensation Section
-    ----------------------------------------------------------------
+
     draw_section_header("LAG COMPENSATION")
     
     local lag_colors = {
@@ -1828,9 +1943,7 @@ client.set_event_callback("paint", function()
     draw_indicator("Choke Ticks:", tostring(lc.choke_ticks), 255, 200, 100)
     draw_bar("LC Confidence", lc.real_conf, 1.0, 100, 255, 200)
     
-    ----------------------------------------------------------------
-    -- Performance Section
-    ----------------------------------------------------------------
+
     draw_section_header("PERFORMANCE")
     
     local total = hits + misses
@@ -1839,10 +1952,7 @@ client.set_event_callback("paint", function()
     draw_indicator("Hits:", tostring(hits), 100, 255, 100)
     draw_indicator("Misses:", tostring(misses), 255, 100, 100)
     draw_bar("Hit Rate", hitrate, 1.0, 100, 255, 150)
-    
-    ----------------------------------------------------------------
-    -- Footer timestamp
-    ----------------------------------------------------------------
+
     current_y = y + h - padding - 12
     local time_text = os.date("%H:%M:%S")
     renderer.text(x + w - padding - 5, current_y, 100, 100, 100, 180 * alpha_mult, "r", 0, time_text)
@@ -1850,9 +1960,6 @@ end)
 ----------------------------------------------------------------
 -- Cleanup Logic
 ----------------------------------------------------------------
-
-local CLEANUP_INTERVAL = 2.0
-
 
 local CLEANUP_INTERVAL = 2.0
 
@@ -1955,7 +2062,9 @@ local function pretrain_from_experiences(max_time_sec)
     while i <= #experience_log do
         local e = experience_log[i]
         if e and e.features and e.target and e.reward ~= nil then
-            enhanced_nn.add_experience(e.features, e.target, e.reward, e.hit_success or false)
+            if type(enhanced_nn) == "table" and type(enhanced_nn.add_experience) == "function" then
+                pcall(enhanced_nn.add_experience, e.features, e.target, e.reward, e.hit_success or false)
+            end
         end
 
         if i % 32 == 0 then
@@ -1973,7 +2082,9 @@ local function pretrain_from_experiences(max_time_sec)
     end
 
     -- After pretraining, save current weights
-    enhanced_nn.save()
+    if type(enhanced_nn) == "table" and type(enhanced_nn.save) == "function" then
+        pcall(enhanced_nn.save)
+    end
 end
 
 -- Initialize persistent data on script load
@@ -1985,7 +2096,10 @@ pretrain_from_experiences(2.5) -- ~2.5 seconds budget
 -- Shutdown Save
 ----------------------------------------------------------------
 client.set_event_callback("shutdown", function()
-    enhanced_nn.save()
+    if type(enhanced_nn) == "table" and type(enhanced_nn.save) == "function" then
+        pcall(enhanced_nn.save)
+    end
+
     save_behavior_profiles()
     save_experiences_to_disk()
 end)
