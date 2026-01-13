@@ -11,7 +11,7 @@ local VERSION_FILE = "enhanced_nn_version.txt"
 
 local GITHUB_LIB_URL = "https://raw.githubusercontent.com/QualetyWeb/reso_data/main/enhanced_nn.lua"
 local GITHUB_VERSION_URL = "https://raw.githubusercontent.com/QualetyWeb/reso_data/main/version.txt"
-
+local enhanced_nn = nil
 
 
 local function read_local_version()
@@ -131,7 +131,6 @@ end
 
 -- Safe require for enhanced_nn: prefer nil when not available so callers can detect absence.
 -- Safe local loader: prefer loading the local file (if present) via load/loadstring.
-local enhanced_nn = nil
 do
     if file_exists_nonempty(LIB_NAME) then
         local ok, src = pcall(readfile, LIB_NAME)
@@ -2068,9 +2067,11 @@ local function pretrain_from_experiences(max_time_sec)
         end
 
         if i % 32 == 0 then
-            local batch = enhanced_nn.sample_batch()
-            if batch then
-                enhanced_nn.train(batch)
+            if type(enhanced_nn) == "table" and type(enhanced_nn.sample_batch) == "function" then
+                local ok, batch = pcall(enhanced_nn.sample_batch)
+                if ok and batch and type(enhanced_nn.train) == "function" then
+                    pcall(enhanced_nn.train, batch)
+                end
             end
 
             if globals.curtime() - start_time > max_time_sec then
