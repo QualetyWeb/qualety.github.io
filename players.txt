@@ -1752,6 +1752,20 @@ local function ease_out_cubic(t)
     return 1 - math.pow(1 - t, 3)
 end
 
+----------------------------------------------------------------
+-- !!!!!!!!!!!TESTING BUTTONS DELETE LATER!!!!!!!!!!
+----------------------------------------------------------------
+local xbutton = ui.new_slider("RAGE", "Other", "X", 20, 100, 20)
+local ybutton = ui.new_slider("RAGE", "Other", "Y", 20, 500, 250)
+local wbutton = ui.new_slider("RAGE", "Other", "W", 20, 400, 280)
+local hbutton = ui.new_slider("RAGE", "Other", "H", 20, 900, 600)
+local padbutton = ui.new_slider("RAGE", "Other", "PAD", 6, 20, 12)
+local linebutton = ui.new_slider("RAGE", "Other", "LINE_H", 6, 20, 12)
+
+----------------------------------------------------------------
+-- !!!!!!!!!!!TESTING BUTTONS DELETE LATER!!!!!!!!!!
+----------------------------------------------------------------
+
 client.set_event_callback("paint", function()
     if not ui.get(resolver_master) then return end
     if not ui.get(resolver_debug) then return end
@@ -1790,8 +1804,8 @@ client.set_event_callback("paint", function()
     
     -- Panel dimensions
     local x, y = 20, 250
-    local w, h = 278, 600
-    local padding = 12
+    local w, h = 160, 450
+    local padding = 13
     local line_h = 12
     
     -- Apply fade animation
@@ -1841,8 +1855,8 @@ client.set_event_callback("paint", function()
     local function draw_bar(label, value, max_val, bar_color_r, bar_color_g, bar_color_b)
         draw_text(label, 200, 200, 200, -4)
         
-        local bar_y = current_y
-        local bar_w = w - padding * 2
+        local bar_y = current_y + 8
+        local bar_w = 109 - padding * 2
         local bar_h = 6
         local fill_w = (value / max_val) * bar_w
         
@@ -1866,7 +1880,7 @@ client.set_event_callback("paint", function()
     
     local function draw_indicator(label, value, color_r, color_g, color_b)
         local label_w = renderer.measure_text(nil, label)
-        renderer.text(x + padding, current_y, 160, 160, 160, 255 * alpha_mult, nil, 0, label)
+        renderer.text(x + padding, current_y, 200, 200, 200, 255 * alpha_mult, nil, 0, label)
         renderer.text(x + padding + label_w + 8, current_y, color_r, color_g, color_b, 255 * alpha_mult, nil, 0, value)
         current_y = current_y + line_h
     end
@@ -1877,38 +1891,38 @@ client.set_event_callback("paint", function()
     
     draw_section_header("STATUS")
     
-    local status_color = {100, 255, 100}
+    local status_color = {200, 200, 200}
     if res.source == "fallback" then
-        status_color = {255, 180, 100}
+        status_color = {230, 180, 120}
     end
     
     draw_indicator("Mode:", res.source:upper(), status_color[1], status_color[2], status_color[3])
-    draw_indicator("Resolver:", "ACTIVE", 100, 255, 100)
+    draw_indicator("Resolver:", "Active", 190, 230, 190)
 
     draw_section_header("TARGET")
     
-    draw_indicator("Name:", name, 255, 255, 255)
+    draw_indicator("Name:", name, 200, 200, 200)
     
     local lp = entity.get_local_player()
     if lp then
         local lx, ly, lz = entity.get_prop(lp, "m_vecOrigin")
         local ex, ey, ez = entity.get_prop(ent, "m_vecOrigin")
         local dist = math.sqrt((ex-lx)^2 + (ey-ly)^2 + (ez-lz)^2) / 52.5 -- units to meters
-        draw_indicator("Distance:", string.format("%.1fm", dist), 255, 255, 100)
+        draw_indicator("Distance:", string.format("%.1fm", dist), 200, 200, 200)
     end
     
-    draw_indicator("Health:", tostring(entity.get_prop(ent, "m_iHealth") or 0), 255, 100, 100)
+    draw_indicator("Health:", tostring(entity.get_prop(ent, "m_iHealth") or 0), 190, 100, 100)
     
     draw_section_header("NEURAL NETWORK")
     
-    draw_bar("Confidence", res.nn_conf, 1.0, 100, 200, 255)
+    draw_bar("Confidence", res.nn_conf, 1.0, 90, 180, 240)
     
-    draw_indicator("Prediction:", string.format("%.1f°", res.yaw), 150, 230, 255)
-    draw_indicator("Desync:", string.format("%.1f°", res.desync), 255, 200, 100)
+    draw_indicator("Prediction:", string.format("%.1f°", res.yaw), 200, 200, 200)
+    draw_indicator("Desync:", string.format("%.1f°", res.desync), 200, 200, 200)
     
     if res.head_bias and res.head_bias ~= 0 then
-        local bias_dir = res.head_bias > 0 and "RIGHT" or "LEFT"
-        local bias_col = res.head_bias > 0 and {255, 150, 150} or {150, 150, 255}
+        local bias_dir = res.head_bias > 0 and "Right" or "Left"
+        local bias_col = res.head_bias > 0 and {200, 200, 200} or {200, 200, 200}
         draw_indicator("Head Bias:", bias_dir, bias_col[1], bias_col[2], bias_col[3])
     end
     
@@ -1916,9 +1930,9 @@ client.set_event_callback("paint", function()
     
     local pat_name = res.pattern or "NONE"
     local pat_colors = {
-        jitter = {255, 100, 255},
-        static = {100, 255, 255},
-        flick = {255, 255, 100},
+        jitter = {200, 200, 200},
+        static = {200, 200, 200},
+        flick = {200, 200, 200},
         none = {150, 150, 150}
     }
     local pat_col = pat_colors[pat_name:lower()] or {150, 150, 150}
@@ -1926,13 +1940,13 @@ client.set_event_callback("paint", function()
     draw_indicator("Pattern:", pat_name:upper(), pat_col[1], pat_col[2], pat_col[3])
     
     if pattern then
-        draw_bar("Pattern Conf", pattern.confidence or 0, 1.0, 200, 150, 255)
+        draw_bar("Pattern Conf", pattern.confidence or 0, 1.0, 90, 180, 240)
     end
 
     draw_section_header("LAG COMPENSATION")
     
     local lag_colors = {
-        real = {100, 255, 100},
+        real = {200, 200, 200},
         choking = {255, 200, 100},
         updating = {255, 255, 100},
         unknown = {150, 150, 150}
@@ -1940,8 +1954,8 @@ client.set_event_callback("paint", function()
     local lag_col = lag_colors[lc.status] or {150, 150, 150}
     
     draw_indicator("Status:", lc.status:upper(), lag_col[1], lag_col[2], lag_col[3])
-    draw_indicator("Choke Ticks:", tostring(lc.choke_ticks), 255, 200, 100)
-    draw_bar("LC Confidence", lc.real_conf, 1.0, 100, 255, 200)
+    draw_indicator("Choke Ticks:", tostring(lc.choke_ticks), 200, 200, 200)
+    draw_bar("LC Confidence", lc.real_conf, 1.0, 90, 180, 240)
     
 
     draw_section_header("PERFORMANCE")
@@ -1949,9 +1963,9 @@ client.set_event_callback("paint", function()
     local total = hits + misses
     local hitrate = total > 0 and (hits / total) or 0
     
-    draw_indicator("Hits:", tostring(hits), 100, 255, 100)
-    draw_indicator("Misses:", tostring(misses), 255, 100, 100)
-    draw_bar("Hit Rate", hitrate, 1.0, 100, 255, 150)
+    draw_indicator("Hits:", tostring(hits), 140, 220, 140)
+    draw_indicator("Misses:", tostring(misses), 220, 140, 140)
+    draw_bar("Hit Rate", hitrate, 1.0, 90, 180, 240)
 
 
 end)
