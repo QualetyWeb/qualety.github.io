@@ -25,11 +25,26 @@ local function write_local_version(v)
     end
 end
 
+local function try_require_enhanced()
+    local ok, mod = pcall(require, "enhanced_nn")
+    if ok and type(mod) == "table" then
+        enhanced_nn = mod
+        client.log("[FrostReso] enhanced_nn loaded after download.")
+    else
+        client.log("[FrostReso] Could not require enhanced_nn after download: " .. tostring(mod))
+    end
+end
+
 local function download_lib(callback)
     http.get(GITHUB_LIB_URL, function(success, response)
         if success and response ~= nil and #response > 0 then
-            writefile(LIB_NAME, response)
-            client.log("[FrostReso] Downloaded enhanced_nn library.")
+            if writefile then
+                writefile(LIB_NAME, response)
+                client.log("[FrostReso] Downloaded enhanced_nn library.")
+                pcall(try_require_enhanced)
+            else
+                client.log("[FrostReso] writefile not available; cannot persist downloaded library.")
+            end
             if callback then callback(true) end
         else
             client.log("[FrostReso] Failed to download enhanced_nn.lua")
@@ -76,10 +91,17 @@ end
 -- Requirements / Dependencies
 ----------------------------------------------------------------
 
-local ok, enhanced_nn = pcall(require, "enhanced_nn")
-if not ok then
-    client.log("[FrostReso] ERROR: Could not load enhanced_nn.lua")
-    enhanced_nn = {}
+-- Safe require for enhanced_nn: prefer nil when not available so callers can detect absence.
+local enhanced_nn = nil
+do
+    local ok, mod = pcall(require, "enhanced_nn")
+    if ok and type(mod) == "table" then
+        enhanced_nn = mod
+        client.log("[FrostReso] enhanced_nn loaded.")
+    else
+        enhanced_nn = nil
+        client.log("[FrostReso] enhanced_nn not loaded. Will attempt to download or load later.")
+    end
 end
 
 if writefile then
@@ -294,11 +316,11 @@ ui.new_label("RAGE", "Other", "\aC8C8C8FFFrost Resolver V2 — Neural Anti‑Aim
 ----------------------------------------------------------------
 
 client.set_event_callback("paint_ui", function()
-    is_on = ui.get(resolver_master) == true
-    true_adv = ui.get(display_adv_opt) == true
-    is_debug = ui.get(resolver_debug) == true
-    is_nn = ui.get(nn_enable) == true
-    is_train = ui.get(nn_train_during_match) == true
+    local is_on = ui.get(resolver_master) == true
+    local true_adv = ui.get(display_adv_opt) == true
+    local is_debug = ui.get(resolver_debug) == true
+    local is_nn = ui.get(nn_enable) == true
+    local is_train = ui.get(nn_train_during_match) == true
 
     ui.set_visible(resolver_debug, is_on)
     --DEBUG
@@ -370,6 +392,11 @@ end
 
 local function log_hitmiss(level, fmt, ...)
     local selected = ui.get(hitlog_level)
+
+    if type(selected) == "number" then
+        local labels = { "-", "Basic", "Detailed" }
+        selected = labels[selected] or tostring(selected)
+    end
 
     if selected == "-" then
         return
@@ -974,55 +1001,53 @@ local function nn_predict(ent, features)
     local cache = prediction_cache[ent]
     local now = globals.curtime()
 
-    if cache and (now - cache.time) < PREDICTION_CACHE_SEC then
+    if cache and (now - (cache.time or 0)) < PREDICTION_CACHE_SEC then
+        -- cache.pred is the primary returned resolved_yaw (number)
         return cache.pred, cache.conf
     end
 
-    -- Call enhanced_nn.predict
+    -- Ensure NN module and function exist
+    if type(enhanced_nn) ~= "table" or type(enhanced_nn.predict) ~= "function" then
+        return nil, nil
+    end
+
     local ok, pred, hidden, masks = pcall(enhanced_nn.predict, features, false)
     if not ok or not pred then
         return nil, nil
     end
 
-    -- Convert NN outputs to meaningful values
+    -- Map NN outputs to meaningful values
     -- pred[1] = normalized yaw (0..1)
     -- pred[2] = normalized desync (0..1)
     -- pred[3] = normalized head bias (0..1) -> [-1..1]
-
-    local resolved_yaw    = (pred[1] * 360) - 180
-    local resolved_desync = (pred[2] * 58) - 29
-
-
+    local resolved_yaw    = (tonumber(pred[1]) or 0) * 360 - 180
+    local resolved_desync = (tonumber(pred[2]) or 0) * 58 - 29
     local head_bias = 0
     if pred[3] ~= nil then
-        -- Map 0..1 -> -1..1
-        head_bias = clamp((pred[3] * 2) - 1, -1, 1)
+        head_bias = clamp((tonumber(pred[3]) or 0) * 2 - 1, -1, 1)
     end
 
-    -- Softer, multi-output confidence:
-    -- - yaw away from center
-    -- - desync away from center
-    -- - small floor so it's never 0 while learning
-    local yaw_margin    = clamp(abs(pred[1] - 0.5) * 2, 0, 1)
-    local desync_margin = clamp(abs(pred[2] - 0.5) * 2, 0, 1)
+    -- Try to derive a confidence value from masks / pred metadata if available,
+    -- otherwise fall back to a conservative default.
+    local conf = 0.5
+    if masks and type(masks) == "table" and masks[1] ~= nil then
+        conf = clamp(tonumber(masks[1]) or conf, 0, 1)
+    elseif pred.confidence ~= nil then
+        conf = clamp(tonumber(pred.confidence) or conf, 0, 1)
+    elseif hidden and hidden.conf ~= nil then
+        conf = clamp(tonumber(hidden.conf) or conf, 0, 1)
+    end
 
-    local confidence = 0.2 + yaw_margin * 0.5 + desync_margin * 0.3
-    confidence = clamp(confidence, 0, 1)
-
-    -- Cache
+    -- Cache the numeric resolved yaw (primary return) and the full vector for later use.
     prediction_cache[ent] = {
-        pred = {
-            yaw       = resolved_yaw,
-            desync    = resolved_desync,
-            head_bias = head_bias
-        },
-        conf = confidence,
-        time = now
+        time = now,
+        pred = resolved_yaw, -- primary numeric return
+        full = { resolved_yaw, resolved_desync, head_bias }, -- full vector if consumers need it
+        conf = conf
     }
 
-    return prediction_cache[ent].pred, confidence
+    return resolved_yaw, conf
 end
-
 
 ----------------------------------------------------------------
 -- Experience Replay: Add Experience
