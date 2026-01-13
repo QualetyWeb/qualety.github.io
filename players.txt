@@ -1790,9 +1790,9 @@ client.set_event_callback("paint", function()
     
     -- Panel dimensions
     local x, y = 20, 250
-    local w, h = 280, 500
+    local w, h = 278, 600
     local padding = 12
-    local line_h = 18
+    local line_h = 12
     
     -- Apply fade animation
     local alpha_mult = ease_out_cubic(panel_alpha)
@@ -1834,7 +1834,7 @@ client.set_event_callback("paint", function()
     local function draw_section_header(text)
         current_y = current_y + 6
         renderer.rectangle(x + padding, current_y, w - padding * 2, 1, 80, 120, 180, 120 * alpha_mult)
-        current_y = current_y + 8
+        current_y = current_y + 6
         draw_text(text, 140, 200, 255, 2)
     end
     
@@ -1859,7 +1859,7 @@ client.set_event_callback("paint", function()
         end
 
         local val_text = string.format("%.0f%%", (value / max_val) * 100)
-        renderer.text(x + w - padding - 5, bar_y - 2, 255, 255, 255, 180 * alpha_mult, "r", 0, val_text)
+        renderer.text(x + w - padding - 10, bar_y - 2, 255, 255, 255, 180 * alpha_mult, "r", 0, val_text)
         
         current_y = current_y + bar_h + 10
     end
@@ -1953,9 +1953,7 @@ client.set_event_callback("paint", function()
     draw_indicator("Misses:", tostring(misses), 255, 100, 100)
     draw_bar("Hit Rate", hitrate, 1.0, 100, 255, 150)
 
-    current_y = y + h - padding - 12
-    local time_text = os.date("%H:%M:%S")
-    renderer.text(x + w - padding - 5, current_y, 100, 100, 100, 180 * alpha_mult, "r", 0, time_text)
+
 end)
 ----------------------------------------------------------------
 -- Cleanup Logic
