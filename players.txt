@@ -266,9 +266,11 @@ local function periodic_cleanup()
 
     local function sweep(tbl)
         for ent, _ in pairs(tbl) do
-            local ok, alive = pcall(entity.is_alive, ent)
-            if not ok or not alive then
-                tbl[ent] = nil
+            if type(ent) == "number" then
+                local ok, alive = pcall(entity.is_alive, ent)
+                if not ok or not alive then
+                    tbl[ent] = nil
+                end
             end
         end
     end
@@ -279,7 +281,6 @@ local function periodic_cleanup()
     sweep(prediction_cache)
     sweep(lagcomp_state)
 end
-
 
 -- Prediction cache duration
 local PREDICTION_CACHE_SEC = 0.03
@@ -317,7 +318,7 @@ local LAGCOMP_HISTORY_DECAY     = 0.9    -- smoothing for confidence
 ----------------------------------------------------------------
 
 -- Header
-ui.new_label("RAGE", "Other", "\aBBC0F3FF" .. "❄  Frost Resolver V2  ❄" .. "\aFFFFFFFF")
+ui.new_label("RAGE", "Other", "\aBBC0F3FF" .. "❄  Frost Resolver V2.5  ❄" .. "\aFFFFFFFF")
 
 
 ----------------------------------------------------------------
@@ -389,7 +390,7 @@ local clear_cache_button = ui.new_button("RAGE", "Other", "Clear Resolver Cache"
     client.log("[FrostReso] Cleared behavior profiles and experience cache.")
 end)
 
-ui.new_label("RAGE", "Other", "\aC8C8C8FFFrost Resolver V2 — Neural Anti‑Aim Engine")
+ui.new_label("RAGE", "Other", "\aC8C8C8FFFrost Resolver V2.5 — Neural Anti‑Aim Engine")
 
 ----------------------------------------------------------------
 -- Set Vis Func
@@ -1871,7 +1872,7 @@ client.set_event_callback("paint", function()
     end
 
     renderer.text(x + padding, current_y, 180, 220, 255, 255 * alpha_mult, "b", 0, "FROST RESOLVER")
-    renderer.text(x + w - padding - 5, current_y, 120, 120, 120, 200 * alpha_mult, "r", 0, "V2")
+    renderer.text(x + w - padding - 5, current_y, 120, 120, 120, 200 * alpha_mult, "r", 0, "V2.5")
     current_y = current_y + 24
     
     draw_section_header("STATUS")
@@ -1966,7 +1967,9 @@ client.set_event_callback("net_update_end", function()
     if not ui.get(resolver_master) then return end
     
     
-    resolver_states.train_nn()
+    if type(train_nn) == "function" then
+        pcall(train_nn)
+    end
     
     -- Cleanup Logic
     local now = globals.curtime()
